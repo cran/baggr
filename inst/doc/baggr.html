@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="author" content="Rachael Meager, Witold Wiecek" />
+
+<meta name="date" content="2019-07-29" />
+
+<title>Aggregating Average Treatment Effects with Baggr</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css" data-origin="pandoc">
+code.sourceCode > span { display: inline-block; line-height: 1.25; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+
+</style>
+<script>
+// apply pandoc div.sourceCode style to pre.sourceCode instead
+(function() {
+  var sheets = document.styleSheets;
+  for (var i = 0; i < sheets.length; i++) {
+    if (sheets[i].ownerNode.dataset["origin"] !== "pandoc") continue;
+    try { var rules = sheets[i].cssRules; } catch (e) { continue; }
+    for (var j = 0; j < rules.length; j++) {
+      var rule = rules[j];
+      // check if there is a div.sourceCode rule
+      if (rule.type !== rule.STYLE_RULE || rule.selectorText !== "div.sourceCode") continue;
+      var style = rule.style.cssText;
+      // check if color or background-color is set
+      if (rule.style.color === '' || rule.style.backgroundColor === '') continue;
+      // replace div.sourceCode by a pre.sourceCode rule
+      sheets[i].deleteRule(j);
+      sheets[i].insertRule('pre.sourceCode{' + style + '}', j);
+    }
+  }
+})();
+</script>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#header {
+text-align: center;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+
+
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Aggregating Average Treatment Effects with Baggr</h1>
+<h4 class="author">Rachael Meager, Witold Wiecek</h4>
+<h4 class="date">2019-07-29</h4>
+
+
+<div id="TOC">
+<ul>
+<li><a href="#data-inputs-reported-effects-or-full-individual-level-data-sets">Data inputs: reported effects or full individual-level data sets</a></li>
+<li><a href="#ate-aggregation-models-in-baggr">ATE aggregation models in <em>baggr</em></a></li>
+<li><a href="#models-their-inputs-likelihood-and-priors-a-summary-table">Models, their inputs, likelihood and priors: a summary table</a></li>
+<li><a href="#running-the-rubin-model-in-baggr">Running the Rubin Model in <em>baggr</em></a></li>
+<li><a href="#understanding-and-criticising-baggr-model-performance">Understanding and criticising <em>baggr</em> model performance</a></li>
+<li><a href="#measuring-pooling">Measuring “pooling”</a></li>
+<li><a href="#plotting-and-model-comparison-in-baggr">Plotting and model comparison in <em>baggr</em></a></li>
+<li><a href="#cross-validation-in-baggr">Cross-validation in <em>baggr</em></a></li>
+<li><a href="#references">References</a></li>
+</ul>
+</div>
+
+<p><em>This vignette is - like the package itself - still under construction. We encourage your feedback.</em></p>
+<p><em>baggr</em> (pronounced “bagger” or “badger” and short for Bayesian Aggregator) is a package for aggregating evidence on causal effects measured in several separate and different instances. These instances may be different studies, groups, locations or “sites” however conceptualised. We refer to these separate pieces of evidence as “groups” for the remainder of this vignette When each group is a study, the model is that of <em>meta-analysis</em>, but aggregation of evidence is not limited to this case.</p>
+<p>One of the most basic objects of interest is the <em><a href="http://www.fsb.muohio.edu/lij14/420_paper_Rubin74.pdf">average treatment effect</a></em>, the difference in the mean outcome in treatment and control groups; for more information see work by <span class="citation">Rubin (1974)</span>. In meta-analysis we are often interested in the average of this average effect across groups, estimated using all the evidence from all the groups. Consider the case where the evidence in each study or group is generated by comparing the outcomes of treatment and control samples in a randomized experiment. We will ignore any covariate information at the individual or group level for now.</p>
+<p>Consider some outcome of interest <span class="math inline">\(y_{ik}\)</span> such as consumption, income or health outcomes for a household or individual <span class="math inline">\(i = 1,2,...N_k\)</span> in study group <span class="math inline">\(k = 1,2....K\)</span>. Let <span class="math inline">\(Y_k\)</span> denote the <span class="math inline">\(N_k\)</span>-length vector of observed outcomes from group <span class="math inline">\(k\)</span>. Denote the binary indicator of treatment status by <span class="math inline">\(T_{ik}\)</span>, and denote by <span class="math inline">\(T_k\)</span> the <span class="math inline">\(N_k\)</span>-length vector of all treatment status indicators from group <span class="math inline">\(k\)</span>.</p>
+<p>Suppose that <span class="math inline">\(y_{ik}\)</span> varies randomly around its mean <span class="math inline">\(\mu_k + \tau_k T_i\)</span>. In this setting <span class="math inline">\(\tau_k\)</span> is the treatment effect in group <span class="math inline">\(k\)</span>. The random variation in <span class="math inline">\(y_{ik}\)</span> may be the result of sampling variation or measurement error, as in the <span class="citation">Rubin (1981)</span> model, or it may be the result of unmodelled heterogeneity or uncertainty in outcomes for individuals within the group. Allow the variance of the outcome variable <span class="math inline">\(y_{ik}\)</span> to vary across sites, so <span class="math inline">\(\sigma_{y_k}^2\)</span> may differ across <span class="math inline">\(k\)</span>.</p>
+<div id="data-inputs-reported-effects-or-full-individual-level-data-sets" class="section level2">
+<h2>Data inputs: reported effects or full individual-level data sets</h2>
+<p>For average effects aggregation, <em>baggr</em> allows 3 types of data inputs. The user may supply, within a data frame environment, any of the following:</p>
+<ol style="list-style-type: decimal">
+<li><p>A set of estimated treatment effects <span class="math inline">\(\{\hat{\tau_k}\}_{k=1}^{K}\)</span> and their standard errors <span class="math inline">\(\{\hat{se_k}\}_{k=1}^{K}\)</span> from each study. This should be formatted as two column vectors of length <span class="math inline">\(K\)</span> within the data frame, where <span class="math inline">\(\hat{\tau_k}\)</span> is the <span class="math inline">\(k\)</span>-th entry of the treatment effect vector and <span class="math inline">\(\hat{se_k}\)</span> is the <span class="math inline">\(k\)</span>-th entry of the standard errors vector. Columns should be names “tau” and “se”.</p></li>
+<li><p>A set of control group means and estimated treatment effects <span class="math inline">\(\{\hat{\mu_k},\hat{\tau_k}\}_{k=1}^{K}\)</span>, as well as the standard errors for both <span class="math inline">\(\{\hat{se}_{\mu k}, \hat{se}_{\tau k}\}_{k=1}^{K}\)</span>, for each study site This should be formatted as four vectors of length <span class="math inline">\(K\)</span> within the data frame, analogous to the above. Columns should be names “mu”, “tau”, “se.mu”, “se.tau”.</p></li>
+<li><p>The full data sets from all the original studies <span class="math inline">\(\{Y_k, T_k\}_{k=1}^{K}\)</span>. This should be formatted as three vectors of length <span class="math inline">\(\sum_{k=1}^K N_{k}\)</span>, which we recommend naming “outcome”, “treatment”, “group” (for site indicators), but the names can also be specified when calling <code>baggr()</code> function.</p></li>
+</ol>
+<p>As an example of an individual-level data set we include in data frames <code>microcredit</code> and <code>microcredit_simplified</code>. The former contains all the microcredit outcome data used in <span class="citation">Meager (2019)</span>, standardized to USD PPP in 2009 terms per two weeks (a time period is necessary as these are flow variables). It therefore contains NAs and other undesirable features, to allow the user to see how <em>baggr</em> handles these common data issues. The data set <code>microcredit_simplified</code> has these issues cleaned up and contains only one outcome of interest, consumer durables spending.</p>
+<p><em>baggr</em> also has a function that automatically produces summary data from full data sets, in case one wishes to run the comparatively faster summary-data models. The “prepare_ma()” function applied to a dataframe with columns named “group”, “outcome”, and “treatment” automatically estimates the control group means, treatment effects, and associated standard errors for each group using an Ordinary Least Squares regression. The resulting output is already formatted as a valid input to the <em>baggr</em> command itself:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1"></a><span class="kw">colnames</span>(microcredit_simplified) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;group&quot;</span>, <span class="st">&quot;outcome&quot;</span>, <span class="st">&quot;treatment&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2"></a><span class="kw">prepare_ma</span>(microcredit_simplified)</span>
+<span id="cb1-3"><a href="#cb1-3"></a><span class="co">#&gt;   group          mu       tau       se.mu     se.tau</span></span>
+<span id="cb1-4"><a href="#cb1-4"></a><span class="co">#&gt; 1     1    5.369612  1.074862   0.3226702   0.425339</span></span>
+<span id="cb1-5"><a href="#cb1-5"></a><span class="co">#&gt; 2     2 1156.243056 -6.503679 146.2217092 191.120776</span></span>
+<span id="cb1-6"><a href="#cb1-6"></a><span class="co">#&gt; 3     3   23.868992  4.440776   1.2379155   2.207257</span></span>
+<span id="cb1-7"><a href="#cb1-7"></a><span class="co">#&gt; 4     4    6.516936  1.377748   1.0043951   2.271460</span></span></code></pre></div>
+</div>
+<div id="ate-aggregation-models-in-baggr" class="section level2">
+<h2>ATE aggregation models in <em>baggr</em></h2>
+<p><em>baggr</em> currently contains two different models suitable for aggregating sets of average treatment effects. Consider first the evidence aggregation model from <span class="citation">Rubin (1981)</span>, discussed extensively in Chapter 5 of <span class="citation">Gelman et al. (2013)</span>; the model consists of a hierarchical likelihood as follows:</p>
+<p><span class="math display">\[\begin{equation}
+\begin{aligned}
+\hat{\tau_k} &amp;\sim N(\tau_k, \hat{se_k}^2) \; \forall \; k \\
+\tau_k &amp;\sim N(\tau, \sigma_{\tau}^2) \; \forall \; k .
+\end{aligned}
+\label{rubin model}
+\end{equation}\]</span></p>
+<p>The motivation for this model structure is discussed in detail in the sources above and in <span class="citation">Meager (2019)</span>. To complete the Bayesian model, we now need priors. <em>baggr</em> has a set of default priors for each model as well as allowing the user to specify her own priors if desired. In the Rubin model, <em>baggr</em>’s default priors on the hyper-parameters are as follows: for <span class="math inline">\(\tau\)</span>, the prior is Normal with mean 0 and variance 1000. This is a very weak prior which does little regularization as a default, centered at zero following the basic philosophical approach that causal effects should not be thought of as large unless data contains evidence to the contrary (a “hand-wavey” form of Occam’s Razor). For <span class="math inline">\(\sigma_{\tau}\)</span> the prior is Uniform on an interval from zero to 10 times the simple or naive variance estimator of the vector <span class="math inline">\(\{\hat{\tau_k}\}_{k=1}^{K}\)</span> generated by the R command var().</p>
+<p>In case you also have data on the control groups’ mean outcomes and the uncertainty on those, it would make sense to augment the <span class="citation">Rubin (1981)</span> model to incorporate that information. Following <span class="citation">Meager (2019)</span>, if one has access to the estimated control means <span class="math inline">\(\{\hat{\mu_k}\}^K_{k=1}\)</span> and their standard errors <span class="math inline">\(\{\hat{se}_{\mu k}\}^K_{k=1}\)</span>, one can fit a jointly Normal model on the pairs <span class="math inline">\(\{\hat{\mu_k},\hat{\tau_k}\}_{k=1}^{K}\)</span>. <em>baggr</em> implements the model from <span class="citation">Meager (2019)</span> which it calls the “mutau” model, like so:</p>
+<p><span class="math display">\[\begin{equation}
+\begin{aligned}
+\hat{\tau_k} &amp;\sim N(\tau_k, \hat{se_{\tau k}}^2) \; \forall \; k \\
+\hat{\mu_k} &amp;\sim N(\mu_k, \hat{se_{\mu k}}^2) \; \forall \; k \\
+\left( \begin{array}{c}
+\mu_{k}\\
+\tau_{k}
+\end{array} \right) 
+&amp;\sim
+N\left( \left(
+\begin{array}{c}
+\mu\\
+\tau
+\end{array} \right), V \right) \; \text{where} \;V = \left[ \begin{array}{cc} \sigma^2_{\mu} &amp; \sigma_{\tau\mu} \\ \sigma_{\tau\mu} &amp; \sigma_{\tau}^2 \end{array} \right]\forall \; k. \\
+\end{aligned}
+\label{full data model}
+\end{equation}\]</span></p>
+<p>If you have only few groups, the priors on <span class="math inline">\(V\)</span> will need to be relatively strong to avoid overfitting. See <span class="citation">Meager (2019)</span> for more discussion of this issue in particular, or see the <a href="https://mc-stan.org/docs/2_18/stan-users-guide/multivariate-hierarchical-priors-section.html">Stan Manual on hierarchical priors</a>. Currently <span class="math inline">\(V\)</span> is decomposed into a correlation matrix <span class="math inline">\(\Omega\)</span>, which receives an LKJCorr(3) prior regularizing it towards independence, and a scale parameter <span class="math inline">\(\theta\)</span> which receives a Cauchy(0,10) prior. This will be something the user can change in later versions of <em>baggr</em>. The <span class="math inline">\(mu\)</span> and <span class="math inline">\(\tau\)</span> parameters have a joint gaussian prior which the user can specify, but which by default is centered at 0. The centering can be changed to any vector of length 2 by passing this vector to <em>baggr</em> labelled as “prior_tau_mean”). The default covariance matrix of this prior is independent with variance <span class="math inline">\(1000^2\)</span>, but the user can pass any prior covariance matrix to <em>baggr</em> labelled as “prior_tau_scale”.</p>
+</div>
+<div id="models-their-inputs-likelihood-and-priors-a-summary-table" class="section level2">
+<h2>Models, their inputs, likelihood and priors: a summary table</h2>
+<!-- This is a mess to edit, sorry. But it presents nicely in Markdown -->
+<table>
+<colgroup>
+<col width="13%"></col>
+<col width="21%"></col>
+<col width="32%"></col>
+<col width="26%"></col>
+<col width="6%"></col>
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Data frame input columns</th>
+<th>Level-1 likelihood</th>
+<th>Level-2 likelihood</th>
+<th>Priors</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>“Rubin”</td>
+<td><code>tau</code> and <code>se</code></td>
+<td><span class="math inline">\(\hat{\tau_k} \sim N(\tau_k, \hat{se_k}^2)\)</span></td>
+<td><span class="math inline">\(\tau_k \sim N(\tau, \sigma_{\tau}^2)\)</span></td>
+<td><span class="math inline">\(\tau \sim \mathcal{N}(0, \sigma^2)\)</span>, <span class="math inline">\(\sigma_{\tau} \sim \mathcal{U}(0, u)\)</span></td>
+</tr>
+<tr class="even">
+<td>“<span class="math inline">\(\mu\)</span> and <span class="math inline">\(\tau\)</span>”</td>
+<td><code>tau</code>, <code>mu</code>, <code>se.tau</code>, <code>se.mu</code></td>
+<td><span class="math inline">\(\hat{\tau_k} \sim N(\tau_k, \hat{se_{\tau,k}}^2)\)</span>, <span class="math inline">\(\hat{\mu_k} \sim N(\mu_k, \hat{se_{\mu,k}}^2)\)</span></td>
+<td><span class="math inline">\(\pmatrix{\mu_k \\ \tau_k} \sim N(\pmatrix{\mu \\ \tau}, V)\)</span></td>
+<td><span class="math inline">\(V = \theta \Omega \theta&#39;\)</span> where <span class="math inline">\(\theta \sim Cauchy(0,10)\)</span>, <span class="math inline">\(\Omega \sim LKJCorr(3)\)</span>, <span class="math inline">\(\pmatrix{\mu \\ \tau} \sim N(0,\Xi )\)</span></td>
+</tr>
+<tr class="odd">
+<td>Full data</td>
+<td>outcome, treatment, group</td>
+<td>Same as for “<span class="math inline">\(\mu\)</span> and <span class="math inline">\(\tau\)</span>”</td>
+<td>Same as for “<span class="math inline">\(\mu\)</span> and <span class="math inline">\(\tau\)</span>”</td>
+<td>Same as for “<span class="math inline">\(\mu\)</span> and <span class="math inline">\(\tau\)</span>”</td>
+</tr>
+<tr class="even">
+<td>Quantiles</td>
+<td>outcome, treatment, group</td>
+<td>See Meager (2019)</td>
+<td>See Meager (2019)</td>
+<td>See Meager (2019)</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="running-the-rubin-model-in-baggr" class="section level2">
+<h2>Running the Rubin Model in <em>baggr</em></h2>
+<p>To demonstrate the Rubin model in <em>baggr</em>, consider the 8 schools example from Rubin (1981). In this dataset, 8 schools in the United States performed similar randomized experiments to estimate the causal effect of an SAT tutoring program on learning outcomes. Reported treatment effects and their standard errors are included in <em>baggr</em> as a data frame:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1"></a>schools</span>
+<span id="cb2-2"><a href="#cb2-2"></a><span class="co">#&gt;      group tau se</span></span>
+<span id="cb2-3"><a href="#cb2-3"></a><span class="co">#&gt; 1 School A  28 15</span></span>
+<span id="cb2-4"><a href="#cb2-4"></a><span class="co">#&gt; 2 School B   8 10</span></span>
+<span id="cb2-5"><a href="#cb2-5"></a><span class="co">#&gt; 3 School C  -3 16</span></span>
+<span id="cb2-6"><a href="#cb2-6"></a><span class="co">#&gt; 4 School D   7 11</span></span>
+<span id="cb2-7"><a href="#cb2-7"></a><span class="co">#&gt; 5 School E  -1  9</span></span>
+<span id="cb2-8"><a href="#cb2-8"></a><span class="co">#&gt; 6 School F   1 11</span></span>
+<span id="cb2-9"><a href="#cb2-9"></a><span class="co">#&gt; 7 School G  18 10</span></span>
+<span id="cb2-10"><a href="#cb2-10"></a><span class="co">#&gt; 8 School H  12 18</span></span></code></pre></div>
+<p>To fit the model in <em>baggr</em> (having followed the installation instructions and loaded the package):</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1"></a>baggr_schools &lt;-<span class="st"> </span><span class="kw">baggr</span>(schools, <span class="dt">model =</span> <span class="st">&quot;rubin&quot;</span>, <span class="dt">pooling =</span> <span class="st">&quot;partial&quot;</span>)</span></code></pre></div>
+<p>This creates a <code>baggr</code> class object, and you can access the underlying <code>stanfit</code> object by calling <code>baggr_schools$fit</code>. If you don’t change the default priors, then <em>baggr</em> will print a message informing you of the priors it has chosen.</p>
+<p>Printing <code>baggr_schools</code> returns a summary of the posterior inference. First <em>baggr</em> records the model type and the pooling regime chosen by the user or implemented by default. Second, <em>baggr</em> returns inference on the aggregate treatment effect <span class="math inline">\(\tau\)</span> by reporting its posterior mean and 95% credible interval, and similar inference on the hyper-variance <span class="math inline">\(\sigma^2_{\tau}\)</span>. Lastly it prints the “updated” inference on each of the groups’ treatment effects, displaying their new posterior means, standard deviations and pooling factors (see below).</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1"></a><span class="kw">print</span>(baggr_schools)</span>
+<span id="cb4-2"><a href="#cb4-2"></a><span class="co">#&gt; Model type: Aggregate data (Rubin) </span></span>
+<span id="cb4-3"><a href="#cb4-3"></a><span class="co">#&gt; Pooling of effects: partial </span></span>
+<span id="cb4-4"><a href="#cb4-4"></a><span class="co">#&gt; </span></span>
+<span id="cb4-5"><a href="#cb4-5"></a><span class="co">#&gt; Aggregate treatment effect:</span></span>
+<span id="cb4-6"><a href="#cb4-6"></a><span class="co">#&gt; Mean(tau) = 8.2 with 95% interval -2.1 to 20.0 </span></span>
+<span id="cb4-7"><a href="#cb4-7"></a><span class="co">#&gt; SD(tau) = 6.66 with 95% interval 0.24 to 20.55 </span></span>
+<span id="cb4-8"><a href="#cb4-8"></a><span class="co">#&gt; </span></span>
+<span id="cb4-9"><a href="#cb4-9"></a><span class="co">#&gt; Treatment effects on mean:</span></span>
+<span id="cb4-10"><a href="#cb4-10"></a><span class="co">#&gt;          mean  sd pooling</span></span>
+<span id="cb4-11"><a href="#cb4-11"></a><span class="co">#&gt; School A 11.7 8.8    0.82</span></span>
+<span id="cb4-12"><a href="#cb4-12"></a><span class="co">#&gt; School B  8.1 6.3    0.72</span></span>
+<span id="cb4-13"><a href="#cb4-13"></a><span class="co">#&gt; School C  6.3 7.8    0.84</span></span>
+<span id="cb4-14"><a href="#cb4-14"></a><span class="co">#&gt; School D  7.7 6.5    0.74</span></span>
+<span id="cb4-15"><a href="#cb4-15"></a><span class="co">#&gt; School E  5.0 6.3    0.69</span></span>
+<span id="cb4-16"><a href="#cb4-16"></a><span class="co">#&gt; School F  6.3 6.8    0.74</span></span>
+<span id="cb4-17"><a href="#cb4-17"></a><span class="co">#&gt; School G 10.7 6.9    0.72</span></span>
+<span id="cb4-18"><a href="#cb4-18"></a><span class="co">#&gt; School H  8.5 7.7    0.86</span></span></code></pre></div>
+<p>This is quite similar to the output from the version of the model suggested in <a href="https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started">“How to use rstan”</a> tutorial, the small difference probably arising from the different default priors.</p>
+<p>As discussed above, it is possible for the user to override the default priors and specify her own priors. The first parameter you can change is the upper bound of the uniform prior on <span class="math inline">\(\sigma_{\tau}\)</span>, called <code>&quot;prior_upper_sigma_tau&quot;</code>, the second is the mean of the prior on <span class="math inline">\(\tau\)</span> itself called <code>&quot;prior_tau_mean&quot;</code>, the third is the scale (standard deviation) of the prior on <span class="math inline">\(\tau\)</span> itself called <code>&quot;prior_tau_scale&quot;</code>. Here I have changed all three as an example (at this stage in <em>baggr</em> if you want to alter one you must provide the full vector):</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1"></a><span class="kw">baggr</span>(schools, <span class="st">&quot;rubin&quot;</span>, <span class="dt">prior =</span> <span class="kw">c</span>(<span class="st">&quot;prior_upper_sigma_tau&quot;</span> =<span class="st"> </span><span class="dv">10000</span>, </span>
+<span id="cb5-2"><a href="#cb5-2"></a>                                  <span class="st">&quot;prior_tau_mean&quot;</span> =<span class="st"> </span><span class="dv">-10</span>, </span>
+<span id="cb5-3"><a href="#cb5-3"></a>                                  <span class="st">&quot;prior_tau_scale&quot;</span> =<span class="st"> </span><span class="dv">100</span>))</span>
+<span id="cb5-4"><a href="#cb5-4"></a>baggr_schools</span></code></pre></div>
+<!-- #[WORKING SECTION Suppose you have the full individual-level dataset for all groups (case 3 above) but still wish to run the Rubin model: _baggr_ can do this automatically, you do not need to manually estimate the group-specific effects and standard errors yourself. To see how it works, check out the microcredit dataset analysed in Meager (2019) which is stored in _baggr_ as the data frame "microcredit". Have a look at the tail of the data frame, which tells you that these households are from the "Tarozzi" et al study group (the Ethiopia trial), for which we have expenditures, revenue and profit data, as well as the treatment indicator. -->
+<!-- # ```{r} -->
+<!-- # tail(microcredit) -->
+<!-- # ``` -->
+<!-- # _baggr_ will only understand the 3 types of formatting described above, and while we have already stacked this dataset, we now need to choose a single outcome to focus on.  ] -->
+<p>Currently, all our models specify Gaussian effects distributions across groups. This is generally appropriate as a first pass at the problem (see Rubin 1981, Gelman et al 2004 and McCollough and Nuehaus 2011 for more) <em>except</em> if the distribution is known to be asymmetric for scientific reasons. For example, if you are working with risk ratios or odds ratios these statistics cannot be negative and the chosen hyper-distribution should typically reflect that. However, in many cases it is possible and indeed standard to maintain the Gaussian assumption on a transform of the object: for example, you can safely fit the Rubin model to the logarithm of the risk ratios or odds ratios. While bearing in mind that log transforms obscure inherent dependencies between means and variances in the raw scale, this is still much better than applying a Gaussian to the raw object itself.</p>
+</div>
+<div id="understanding-and-criticising-baggr-model-performance" class="section level2">
+<h2>Understanding and criticising <em>baggr</em> model performance</h2>
+<p><em>Baggr</em> models are run in Stan, and the fit and results need to be checked, understood and criticised as you would any stan model or indeed any MCMC model fitting exercise. <strong>You must pay attention to printed warnings about the Rhat criterion: if you see a warning that Rhat statistic exceeds 1.05 for any parameter, you MUST NOT use the results for inference.</strong> This warning means the MCMC chains have not converged, and it is exceedingly unlikely that the “posterior inference” printed out corresponds to anything close to the true posterior implied by your model and data. <strong>If you use results from which the Rhat statistic exceeds 1.05 YOUR INFERENCE WILL BE WRONG.</strong></p>
+<p>If you see this warning, try re-running the model with the option <code>iter</code> set to a large number such as 10,000, as below. It is also good practice to run many chains, such as 8 rather than the default 4, to have a greater chance to detect pathological MCMC behaviour. You do this by passing <em>baggr</em> the stan arguments <code>iter = 10000</code> and <code>chains = 8</code>, like so:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a>baggr_schools &lt;-<span class="st"> </span><span class="kw">baggr</span>(schools, <span class="dt">model =</span> <span class="st">&quot;rubin&quot;</span>, <span class="dt">pooling =</span> <span class="st">&quot;partial&quot;</span>, <span class="dt">iter =</span> <span class="dv">10000</span>, <span class="dt">chains =</span> <span class="dv">8</span>)</span></code></pre></div>
+<p>Other warnings you may see involve “divergent transitions”. While not as serious as high Rhat, this can signal problems with the model. As the stan message that you will see suggests, try adjusting <code>adapt_delta</code> argument above 0.8, e.g. to 0.99. You cannot pass this parameter directly to <em>stan</em> and thus you cannot pass it directly to baggr, so instead you must pass the argument <code>control = list(adapt_delta = 0.99)</code>.</p>
+</div>
+<div id="measuring-pooling" class="section level2">
+<h2>Measuring “pooling”</h2>
+<p>It is often useful to measure the extent to which the hierarchical model is “pooling” or sharing information across the <span class="math inline">\(K\)</span> groups in the process of aggregation. Baggr automatically computes such a metric, and as one can see above, printing a baggr object displays a column called “pooling”. This column contains the classical pooling metric that describes the extent to which each of the group effects is “shrunk” towards their common mean in the process of aggregating information across groups. While there are many different measures of pooling, and the appropriate metric depends on the specific research question, baggr computes by default the <span class="citation">Gelman and Pardoe (2006)</span> metric, which delivers the percentage of total variation in <span class="math inline">\(\hat{\tau_k}\)</span> around <span class="math inline">\(\tau\)</span> which is attributed to sampling variation within group <span class="math inline">\(k\)</span>: <span class="math display">\[\begin{equation}
+\omega_{\tau_k} = \frac{\hat{se}^2_{k}}{\hat{se}^2_{k} + \sigma^2_{\tau}}.
+\end{equation}\]</span> Baggr uses the posterior mean of <span class="math inline">\(\sigma^2_{\tau}\)</span> to compute this metric (capacity to print bounds is coming soon).</p>
+<p>One can interpret the metric as follows: if this pooling metric is large and approaching 1, the analyst gains a lot by pooling information across groups; if this is small and approaching 0, one gains little from the aggregated analysis relative to inference on each group separately (“no pooling”). For further discussion see <span class="citation">Gelman and Pardoe (2006)</span>, Gelman and Pardoe (2006) or Meager (2019).</p>
+</div>
+<div id="plotting-and-model-comparison-in-baggr" class="section level2">
+<h2>Plotting and model comparison in <em>baggr</em></h2>
+<p>A fundamental step to understanding the model is to plot the posterior distributions. <em>baggr</em> has several automatic plot functions which you can access by calling <code>baggr_plot()</code>; these visuals are based on <code>bayesplot</code> package. Plotting functions always take <code>baggr</code> class object as their first argument. By default, means and 95% posterior intervals of the effects <em>in each group</em> are shown. Extra options are available, such as whether to order the results by effect size. For the 8 schools Rubin model we have</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a><span class="kw">baggr_plot</span>(baggr_schools, <span class="dt">order =</span> <span class="ot">FALSE</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+<p><strong>[Model comparison will be included in the next package release.]</strong></p>
+<p>The second step to understanding the model is to compare it to other models we could have fit: this can be done automatically in <em>baggr</em> using the command <code>baggr_compare</code>. The default Rubin model (which we have selected explicitly above) is that of partial pooling. When using <code>baggr_compare</code> without any extra arguments, full pooling, no pooling and partial pooling versions of the model will be fit:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">baggr_compare</span>(schools)</span></code></pre></div>
+<p>(We will show the output of this function below.) Different comparisons, e.g. of models using different priors, are also possible.</p>
+<p>The <code>baggr_compare</code> command also produces an automatic comparison plot made by calling <code>ggplot2</code> package. Because the output object of baggr_compare is a <code>ggplot</code> object you can edit it further yourself and built on it as you would any <code>ggplot</code> object. For example, the default title for the plot is just “mean”, so here I’ve changed it to be more descriptive:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a>my_baggr_plot &lt;-<span class="st"> </span><span class="kw">baggr_compare</span>(schools)</span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>my_baggr_plot<span class="op">$</span>plot <span class="op">+</span><span class="st"> </span><span class="kw">ggtitle</span>(<span class="st">&quot;8 schools: model comparison&quot;</span>)</span></code></pre></div>
+<p><img src="data:image/png;base64,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" /><!-- --></p>
+</div>
+<div id="cross-validation-in-baggr" class="section level2">
+<h2>Cross-validation in <em>baggr</em></h2>
+<p><strong>[Automated cross-validation will be included in the next package release. For this version only the “manual” method is available, as presented at the end of this section.]</strong></p>
+<p><em>Baggr</em> has built-in, automated leave-one-out cross validation for its models, where the “one” always refers to one group. This naturally corresponds to the question of how much any one group has contributed to the overall inference. Therefore, if you have <span class="math inline">\(K\)</span> groups, using the <code>loocv()</code> will run your model of choice <span class="math inline">\(K\)</span> times. Be aware that this may take a while even for simple models. (You should see a progress bar in your terminal window.) The <code>loocv()</code> function takes in the same arguments as <code>baggr()</code>, plus an option (<code>return_models</code>) for whether to return all the models or just the summary statistics. For the 8 schools example we can do</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a>loocv_res &lt;-<span class="st"> </span><span class="kw">loocv</span>(schools, <span class="dt">return_models =</span> <span class="ot">FALSE</span>, <span class="st">&quot;rubin&quot;</span>, <span class="dt">pooling =</span> <span class="st">&quot;partial&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a>loocv_res</span>
+<span id="cb12-2"><a href="#cb12-2"></a><span class="co">#&gt; [1] &quot;log predictive density =  63.51933&quot;</span></span></code></pre></div>
+<p>The main output is <span class="math inline">\(-2\)</span> times the log predictive density (<em>lpd</em>) summed over 8 models, which corresponds to the Watanabe-Akaike Information Criterion. A WAIC value closer to zero (i.e. a smaller number in magnitude) means a better fit.</p>
+<p>More data are stored in <code>loocv()</code> output, and can be accessed via <code>attributes()</code>, e.g. the mean treatment effects, their variability and <em>lpd</em> for each model that are stored in the attribute <code>df</code>:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a><span class="kw">names</span>(<span class="kw">attributes</span>(loocv_res))</span>
+<span id="cb13-2"><a href="#cb13-2"></a><span class="co">#&gt; [1] &quot;names&quot; &quot;class&quot;</span></span>
+<span id="cb13-3"><a href="#cb13-3"></a><span class="kw">attr</span>(loocv_res, <span class="st">&quot;df&quot;</span>)</span>
+<span id="cb13-4"><a href="#cb13-4"></a><span class="co">#&gt; NULL</span></span></code></pre></div>
+<p>This data frame can then be used to examine or compute the variation in the inference on <span class="math inline">\(\tau\)</span> in the absence of each group. If the user is interested in manually checking the consequences of excluding a particular group or set of groups, this is also possible in <em>baggr</em> using subsetting. For example, suppose that we want to run the Rubin model on school groups 1-7 and predict the effect in the 8th school. The code below shows how you can specify a subset of the dataframe as your “data” argument, and then designate another subset as the “testing” holdout set by assigning it to the argument “test_data” in the baggr command. Here we have done it for both partial and full pooling:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a>fit1 &lt;-<span class="st"> </span><span class="kw">baggr</span>(<span class="dt">data =</span> schools[<span class="dv">1</span><span class="op">:</span><span class="dv">7</span>,], <span class="dt">test_data =</span> schools[<span class="dv">8</span>,], <span class="dt">model =</span> <span class="st">&quot;rubin&quot;</span>, <span class="dt">pooling =</span> <span class="st">&quot;partial&quot;</span>)</span>
+<span id="cb14-2"><a href="#cb14-2"></a>fit2 &lt;-<span class="st"> </span><span class="kw">baggr</span>(<span class="dt">data =</span> schools[<span class="dv">1</span><span class="op">:</span><span class="dv">7</span>,], <span class="dt">test_data =</span> schools[<span class="dv">8</span>,], <span class="dt">model =</span> <span class="st">&quot;rubin&quot;</span>, <span class="dt">pooling =</span> <span class="st">&quot;full&quot;</span>)</span></code></pre></div>
+<p>We can compare the performance of the two models using the mean log predictive density. This itself is a density as the name suggests so we will compute the log expected value of this density: here, as before, a number closer to zero is better. In this case the full pooling model actually does slightly better:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a>fit1<span class="op">$</span>mean_lpd</span>
+<span id="cb15-2"><a href="#cb15-2"></a><span class="co">#&gt; [1] 7.942566</span></span>
+<span id="cb15-3"><a href="#cb15-3"></a>fit2<span class="op">$</span>mean_lpd</span>
+<span id="cb15-4"><a href="#cb15-4"></a><span class="co">#&gt; [1] 7.744134</span></span></code></pre></div>
+</div>
+<div id="references" class="section level2 unnumbered">
+<h2>References</h2>
+<div id="refs" class="references">
+<div id="ref-gelman_bayesian_2013">
+<p>Gelman, Andrew, John B. Carlin, Hal S. Stern, David B. Dunson, Aki Vehtari, and Donald B. Rubin. 2013. <em>Bayesian Data Analysis</em>. CRC Press.</p>
+</div>
+<div id="ref-gelman_bayesian_2006">
+<p>Gelman, Andrew, and Iain Pardoe. 2006. “Bayesian Measures of Explained Variance and Pooling in Multilevel (Hierarchical) Models.” <em>Technometrics</em> 48 (2): 241–51. <a href="https://doi.org/10.1198/004017005000000517">https://doi.org/10.1198/004017005000000517</a>.</p>
+</div>
+<div id="ref-meager_aggregating_2019-1">
+<p>Meager, Rachael. 2019. “Aggregating Distributional Treatment Effects: A Bayesian Hierarchical Analysis of the Microcredit Literature.” <a href="https://doi.org/10.31222/osf.io/7tkvm">https://doi.org/10.31222/osf.io/7tkvm</a>.</p>
+</div>
+<div id="ref-rubin_estimating_1974">
+<p>Rubin, Donald B. 1974. “Estimating Causal Effects of Treatments in Randomized and Nonrandomized Studies.” <em>Journal of Educational Psychology</em>. <a href="https://doi.org/10.1037/h0037350">https://doi.org/10.1037/h0037350</a>.</p>
+</div>
+<div id="ref-rubin_estimation_1981">
+<p>———. 1981. “Estimation in Parallel Randomized Experiments.” <em>Journal of Educational Statistics</em> 6 (4): 377–401.</p>
+</div>
+</div>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
