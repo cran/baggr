@@ -1,11 +1,6 @@
-#' Leave one out cross-validation for \code{baggr} models
+#' Leave one group out cross-validation for \code{baggr} models
 #'
-#' Creates $k$ `baggr` models by leaving out one group at the time
-#' and calculating log predictive density \eqn{lpd_{k}}
-#' for that group (see Gelman _et al_). Returned value is a \eqn{-2\sum lpd_{k}}.
-#' Inputs to this function are same as to [baggr], with additional
-#' option to return individual models.
-#'
+#' Performs exact leave-one-group-out cross-validation on a baggr model.
 #'
 #' @param data Input data frame - same as for [baggr] function.
 #' @param return_models logical; if FALSE, summary statistics will be returned and the
@@ -13,18 +8,28 @@
 #'                      if TRUE, a list of models will be returned alongside summaries
 #' @param ... Additional arguments passed to [baggr].
 #' @return log predictive density value, an object of class `baggr_cv`;
-#' full model, prior values and _lpd_ of each model are also returned
-#' these can be examined by using `attributes()` function
+#' full model, prior values and _lpd_ of each model are also returned.
+#' These can be examined by using `attributes()` function.
 #'
 #' @details
-#' For running more computation-intensive models, consider setting the `mc.cores`
-#' option before running `loocv`, e.g. `options(mc.cores = 4)` (by default `baggr` runs
-#' 4 MCMC chains in parallel).
-#' As a default, rstan runs "silently" (`refresh=0`). To see sampling progress, please
-#' set e.g. `loocv(data, refresh = 500)`.
 #'
-#' For more information on cross-validation see
+#' The values returned by `loocv()` can be used to understand how any
+#' one group affects the overall result, as well as how well the model
+#' predicts the omitted group.
+#'
+#' This function automatically runs K baggr models, leaving out one group at a time,
+#' and then calculates expected log predictive density (ELPD) for
+#' that group (see Gelman et al 2013). The main output is the cross-validation
+#' information criterion, or -2 times the ELPD averaged over 'K' models.
+#' This is related to, and often approximated by, the Watanabe-Akaike
+#' Information Criterion. A value closer to zero (i.e. a smaller number in magnitude)
+#' means a better fit. For more information on cross-validation see
 #' [this overview article](http://www.stat.columbia.edu/~gelman/research/published/waic_understand3.pdf)
+#'
+#' For running more computation-intensive models, consider setting the mc.cores option before running loocv, e.g. options(mc.cores = 4)
+#' (by default baggr runs 4 MCMC chains in parallel).
+#' As a default, rstan runs "silently" (refresh=0).
+#' To see sampling progress, please set e.g. loocv(data, refresh = 500).
 #'
 #' @examples
 #' \donttest{
@@ -49,7 +54,8 @@ loocv <- function(data, return_models = FALSE, ...) {
 
   # Set parallel up...
   # if(is.null(getOption("mc.cores"))){
-  #   cat(paste0("loocv() temporarily set options(mc.cores = parallel::detectCores()) \n"))
+  #   cat(paste0(
+  #     "loocv() temporarily set options(mc.cores = parallel::detectCores()) \n"))
   #   temp_cores <- TRUE
   #   options(mc.cores = parallel::detectCores())
   # } else {
@@ -65,9 +71,11 @@ loocv <- function(data, return_models = FALSE, ...) {
   # Prepare the arguments
   args[["data"]] <- data
   args[["model"]] <- full_fit$model
+  if(full_fit$model == "full")
+    stop("LOO CV is not implemented for full data models yet.")
   if(!("prior" %in% names(args))) {
     message("(Prior distributions taken from the model with all data. See $prior.)")
-    args[["prior"]] <- full_fit$prior
+    args[["formatted_prior"]] <- full_fit$formatted_prior
   }
 
   # Determine number and names of groups
@@ -123,16 +131,21 @@ loocv <- function(data, return_models = FALSE, ...) {
   sd_estimate <-
     lapply(kfits, function(x) mean(treatment_effect(x)[[2]]))
   loglik <-
-    lapply(kfits, function(x) apply(as.matrix(x$fit, "logpd"), 2, mean))
+    lapply(kfits, function(x) apply(as.matrix(x$fit, "logpd[1]"), 2, mean))
+
+  elpds <- unlist(loglik)
 
   out <- list(
-    lpd = -2*sum(unlist(loglik)),
+    se = sqrt(length(elpds) * var(elpds)),
+    elpd = sum(unlist(elpds)),
+    looic = -2*sum(unlist(elpds)),
     df  = data.frame(
       "tau" = unlist(tau_estimate),
       "sigma_tau" = unlist(sd_estimate),
       "lpd" = unlist(loglik)),
     full_model = full_fit,
-    prior = args[["prior"]]
+    prior = args[["prior"]],
+    K = K
   )
   if(return_models)
     out$models <- kfits
@@ -145,6 +158,25 @@ loocv <- function(data, return_models = FALSE, ...) {
 }
 
 #' @export
-print.baggr_cv <- function(x, ...) {
-  print(paste("log predictive density = ", format(x$lpd)))
+#' @importFrom testthat capture_output
+#' @importFrom crayon bold
+print.baggr_cv <- function(x, digits = 2, ...) {
+
+  mat <- matrix(nrow = 2, ncol = 2)
+
+  mat[1,] <- c(x$elpd, x$se)
+  mat[2,] <- c(x$looic, -2*x$se)
+
+  colnames(mat) <- c("Estimate", "Standard Error")
+  rownames(mat) <- c("elpd", "looic")
+
+  cat(
+    crayon::bold(paste0("Based on ", x$K, "-fold cross-validation\n")),
+    "\n",
+    testthat::capture_output(print(mat, digits = digits))
+  )
+
 }
+
+
+

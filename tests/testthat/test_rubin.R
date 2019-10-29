@@ -1,5 +1,6 @@
 context("baggr() calls with Rubin model")
 library(baggr)
+library(testthat)
 
 
 # prepare inputs ----------------------------------------------------------
@@ -12,6 +13,10 @@ df_pooled <- data.frame("tau" = c(1, -1, .5, -.5, .7, -.7, 1.3, -1.3),
 
 # tests ----------------------------------------------------------
 test_that("Error messages for wrong inputs are in place", {
+  expect_error(baggr("Text"), "data argument")
+  expect_error(baggr(5), "data argument")
+  expect_error(baggr(df_pooled[1,]), "data argument")
+
   # model or pooling type doesn't exist
   expect_error(baggr(df_pooled, "made_up_model"), "Unrecognised model")
   expect_error(baggr(df_pooled, pooling = "nune"), "Wrong pooling")
@@ -39,13 +44,26 @@ test_that("Error messages for wrong inputs are in place", {
 })
 
 
+# There will always be a divergent transition / ESS warning produced by Stan
+# at iter = 200.
+bg5_n <- expect_warning(baggr(df_pooled, "rubin", pooling = "none", group = "state",
+                              iter = 200, chains = 2, refresh = 0,
+                              show_messages = F))
+bg5_p <- expect_warning(baggr(df_pooled, "rubin", pooling = "partial", group = "state",
+                              iter = 200, chains = 2, refresh = 0,
+                              show_messages = F))
+bg5_f <- expect_warning(baggr(df_pooled, "rubin", pooling = "full", group = "state",
+                              iter = 200, chains = 2, refresh = 0,
+                              show_messages = F))
+bg5_ppd <- expect_warning(baggr(df_pooled, "rubin", ppd = T,
+                                iter = 200, chains = 2, refresh = 0,
+                                show_messages = F))
 
-bg5_n <- baggr(df_pooled, "rubin", pooling = "none", group = "state",
-               iter = 200, chains = 2, refresh = 0)
-bg5_p <- baggr(df_pooled, "rubin", pooling = "partial", group = "state",
-               iter = 200, chains = 2, refresh = 0)
-bg5_f <- baggr(df_pooled, "rubin", pooling = "full", group = "state",
-               iter = 200, chains = 2, refresh = 0)
+test_that("Different pooling methods work for Rubin model", {
+  expect_is(bg5_n, "baggr")
+  expect_is(bg5_p, "baggr")
+  expect_is(bg5_f, "baggr")
+})
 
 test_that("Extra args to Stan passed via ... work well", {
   expect_equal(nrow(as.matrix(bg5_p$fit)), 200) #right dimension means right iter
@@ -69,12 +87,6 @@ test_that("Data are available in baggr object", {
   expect_identical(bg5_f$data, df_pooled)
 })
 
-test_that("Different pooling methods work for Rubin model", {
-  expect_is(bg5_n, "baggr")
-  expect_is(bg5_p, "baggr")
-  expect_is(bg5_f, "baggr")
-})
-
 test_that("Pooling metrics", {
   # all pooling metric are the same as SE's are the same
   expect_equal(length(unique(bg5_p$pooling_metric[1,,1])), 1) #expect_length()
@@ -89,8 +101,10 @@ test_that("Pooling metrics", {
   expect_is(pp, "array")
   expect_gt(min(pp), 0)
   expect_lt(max(pp), 1)
+  expect_identical(bg5_p$pooling_metric, pooling(bg5_p))
+
   # since all SEs are the same, pooling should be the same for all sites
-  print(pp)
+  capture_output(print(pp))
   # expect_equal(pp[2,,1], .75, tolerance = .1) #YUGE tolerance as we only do 200 iter
   expect_equal(length(unique(pp[2,,1])), 1)
   expect_equal(as.numeric(pp[2,1,1]), .75, tolerance = .1)
@@ -109,6 +123,7 @@ test_that("Calculation of effects works", {
 
 
 test_that("Plotting works", {
+  expect_is(plot(bg5_ppd), "gg")
   expect_is(plot(bg5_n), "gg")
   expect_is(plot(bg5_p, order = TRUE), "gg")
   expect_is(plot(bg5_f, order = FALSE), "gg")
@@ -117,19 +132,19 @@ test_that("Plotting works", {
 })
 
 test_that("printing works", {
-  print(bg5_n)
-  print(bg5_p)
-  print(bg5_f)
+  capture_output(print(bg5_n))
+  capture_output(print(bg5_p))
+  capture_output(print(bg5_f))
 })
 
 test_that("Test data can be used in the Rubin model", {
-
-  bg_lpd <- baggr(df_pooled[1:6,], test_data = df_pooled[7:8,], iter = 500, refresh = 0)
+  bg_lpd <- expect_warning(baggr(df_pooled[1:6,], test_data = df_pooled[7:8,],
+                                 iter = 500, refresh = 0))
   expect_is(bg_lpd, "baggr")
   # make sure that we have 6 sites, not 8:
   expect_equal(dim(group_effects(bg_lpd)), c(1000, 6, 1))
   # make sure it's not 0
-  expect_equal(mean(rstan::extract(bg_lpd$fit, "logpd")[[1]]), -3.6, tolerance = 1)
+  expect_equal(mean(rstan::extract(bg_lpd$fit, "logpd[1]")[[1]]), -3.6, tolerance = 1)
 
   # wrong test_data
   df_na <- df_pooled[7:8,]; df_na$tau <- NULL
@@ -140,11 +155,22 @@ test_that("Test data can be used in the Rubin model", {
 # test helpers -----
 
 test_that("Extracting treatment/study effects works", {
-  expect_error(treatment_effect(df_pooled), "treatment_effect requires a baggr object")
+  expect_error(treatment_effect(df_pooled))
   expect_is(treatment_effect(bg5_p), "list")
   expect_identical(names(treatment_effect(bg5_p)), c("tau", "sigma_tau"))
-  expect_is(treatment_effect(bg5_p)$tau, "array")
+  expect_is(treatment_effect(bg5_p)$tau, "numeric") #this might change to accommodate more dim's
   expect_message(treatment_effect(bg5_n), "no treatment effect estimated when")
+
+  # Drawing values of tau:
+  expect_error(effect_draw(cars))
+  expect_is(effect_draw(bg5_p), "numeric")
+  expect_length(effect_draw(bg5_p), 200)
+  expect_length(effect_draw(bg5_p,7), 7)
+  expect_identical(effect_draw(bg5_n), NA)
+
+  # Plotting tau:
+  expect_is(effect_plot(bg5_p), "gg")
+  expect_is(effect_plot("Model A" = bg5_p, "Model B" = bg5_f), "gg")
 
 })
 
@@ -175,7 +201,7 @@ test_that("Extracting treatment/study effects works", {
 
 # tests for helper functions -----
 
-test_that("baggr_compare", {
+test_that("baggr_compare basic cases work with Rubin", {
   # If I pass nothing
   expect_error(baggr_compare(), "Must provide baggr models")
   # pooling
@@ -185,7 +211,12 @@ test_that("baggr_compare", {
   # if I pass list of rubbish
   expect_error(baggr_compare("Fit 1" = cars, "Fit 2" = cars))
   # Run models from baggr_compare:
-  bgcomp <- baggr_compare(schools, refresh = 0)
+  bgcomp <- expect_warning(baggr_compare(schools,
+                                         iter = 200, refresh = 0))
+  expect_is(bgcomp, "list")
+  # Compare prior vs posterior:
+  bgcomp <- expect_warning(baggr_compare(schools, iter = 200,
+                                         what = "prior", refresh = 0))
   expect_is(bgcomp, "list")
   # Compare existing models:
   bgcomp2 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "single")
@@ -202,20 +233,39 @@ test_that("loocv", {
   # Can't do pooling none
   expect_error(loocv(schools, pooling = "none"))
 
-  loo_model <- loocv(schools, return_models = TRUE, refresh = 0)
+  loo_model <- expect_warning(loocv(schools, return_models = TRUE, iter = 200, refresh = 0))
   expect_is(loo_model, "baggr_cv")
-  print(loo_model)
+  capture_output(print(loo_model))
 })
 
 
 
 
-# 8 schools test -----
 
-bg_s <- baggr(schools, refresh = 0)
+# 8 schools correctness test -----
+
+bg_s <- baggr(schools, refresh = 0, iter = 2000, control = list(adapt_delta = .99))
 
 test_that("The default 8 schools result is close to the result in BDA", {
   expect_equal(mean(treatment_effect(bg_s)$tau), 8, tolerance = .25)
   expect_equal(mean(treatment_effect(bg_s)$sigma_tau), 7, tolerance = .25)
+})
 
+
+# Bangert-Drowns correctness check -----
+
+# dt_bd <- metafor::dat.bangertdrowns2004 %>%
+# dplyr::mutate(study = paste(author, year), tau = yi, se = sqrt(vi))
+# write.table(dt_bd, file = "inst/tests/bangertdrowns2004.csv")
+dt_bd <- read.table(system.file("tests", "bangertdrowns2004.csv", package = "baggr"))
+bg_bd <- baggr(dt_bd, group = "study", model = "rubin", iter = 4000,
+               prior_hypersd = uniform(0, 10), refresh = 0)
+# RE results from metafor:
+# metafor::rma(yi, vi, data=dt2)
+test_that("Bangert-Drowns meta-analysis result is close to metafor output", {
+  expect_equal(mean(treatment_effect(bg_bd)$tau), 0.22, tolerance = .01)
+  expect_equal(as.numeric(quantile(treatment_effect(bg_bd)$tau, .025)),
+               0.13, tolerance = .015)
+  expect_equal(as.numeric(quantile(treatment_effect(bg_bd)$tau, .975)),
+               0.31, tolerance = .015)
 })

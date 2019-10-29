@@ -1,7 +1,8 @@
-#' @title Convert inputs for baggr models
+#' Convert inputs for baggr models
 #'
 #' Converts data to Stan inputs, checks integrity of data
-#' and suggests default model if needed.
+#' and suggests default model if needed. Typically used
+#' automatically by [baggr] but useful for debugging.
 #'
 #' @param data `data.frame`` with desired modelling input
 #' @param model valid model name used by baggr;
@@ -10,7 +11,7 @@
 #'              automatically
 #' @param quantiles vector of quantiles to use (only applicable if `model = "quantiles"`)
 #' @param group name of the column with grouping variable
-#' @param outcome name of column with outcome variable
+#' @param outcome name of column with outcome variable (designated as string)
 #' @param treatment name of column with treatment variable
 #' @param test_data same format as `data` argument, gets left aside for
 #'                  testing purposes (see [baggr])
@@ -23,6 +24,9 @@
 #'
 #'
 #' @author Witold Wiecek, Rachael Meager
+#' @examples
+#' # simple meta-analysis example:
+#' convert_inputs(schools, "rubin")
 #' @export
 
 convert_inputs <- function(data,
@@ -140,7 +144,7 @@ convert_inputs <- function(data,
       out$test_Sigma_y_k_0 <- array(0, dim = c(0, ncol(out$y_0), ncol(out$y_0)))
       out$test_Sigma_y_k_1 <- array(0, dim = c(0, ncol(out$y_0), ncol(out$y_0)))
     } else {
-      # Disabled until summarise_qunatiles_data() gets included in the release again.
+      # Disabled until summarise_quantiles_data() gets included in the release again.
       # out_test <- summarise_quantiles_data(test_data, quantiles,
                                       # outcome, group, treatment)
       # out$K_test <- out_test$K #reminder: K is number of sites, N is number of quantiles

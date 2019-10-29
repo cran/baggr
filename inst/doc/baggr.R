@@ -9,12 +9,8 @@ baggr_schools <- baggr(schools, model = "rubin", pooling = "partial")
 # baggr_compare(schools)
 # my_baggr_plot <- baggr_compare(schools)
 
-
 ## ------------------------------------------------------------------------
-colnames(microcredit_simplified) <- c("group", "outcome", "treatment")
-prepare_ma(microcredit_simplified)
-
-## ------------------------------------------------------------------------
+prepare_ma(microcredit_simplified, outcome = "consumerdurables")
 
 ## ------------------------------------------------------------------------
 schools
@@ -26,13 +22,17 @@ schools
 print(baggr_schools)
 
 ## ----eval=FALSE----------------------------------------------------------
-#  baggr(schools, "rubin", prior = c("prior_upper_sigma_tau" = 10000,
-#                                    "prior_tau_mean" = -10,
-#                                    "prior_tau_scale" = 100))
-#  baggr_schools
+#  baggr(schools, "rubin",
+#        prior_hypermean = normal(-5, 10),
+#        prior_hypersd   = uniform(0, 5))
 
 ## ----eval=FALSE----------------------------------------------------------
-#  baggr_schools <- baggr(schools, model = "rubin", pooling = "partial", iter = 10000, chains = 8)
+#  custom_priors <- list( hypermean = cauchy(0,25), hypersd = normal(0,30))
+#  baggr(schools, "rubin", pooling = "partial", prior = custom_priors)
+
+## ----eval=FALSE----------------------------------------------------------
+#  baggr_schools <- baggr(schools, model = "rubin", pooling = "partial",
+#                         iter = 10000, chains = 8)
 
 ## ----fig.width=4---------------------------------------------------------
 baggr_plot(baggr_schools, order = FALSE)

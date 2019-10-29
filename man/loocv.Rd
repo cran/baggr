@@ -2,7 +2,7 @@
 % Please edit documentation in R/loocv.R
 \name{loocv}
 \alias{loocv}
-\title{Leave one out cross-validation for \code{baggr} models}
+\title{Leave one group out cross-validation for \code{baggr} models}
 \usage{
 loocv(data, return_models = FALSE, ...)
 }
@@ -17,25 +17,30 @@ if TRUE, a list of models will be returned alongside summaries}
 }
 \value{
 log predictive density value, an object of class \code{baggr_cv};
-full model, prior values and \emph{lpd} of each model are also returned
-these can be examined by using \code{attributes()} function
+full model, prior values and \emph{lpd} of each model are also returned.
+These can be examined by using \code{attributes()} function.
 }
 \description{
-Creates $k$ \code{baggr} models by leaving out one group at the time
-and calculating log predictive density \eqn{lpd_{k}}
-for that group (see Gelman \emph{et al}). Returned value is a \eqn{-2\sum lpd_{k}}.
-Inputs to this function are same as to \link{baggr}, with additional
-option to return individual models.
+Performs exact leave-one-group-out cross-validation on a baggr model.
 }
 \details{
-For running more computation-intensive models, consider setting the \code{mc.cores}
-option before running \code{loocv}, e.g. \code{options(mc.cores = 4)} (by default \code{baggr} runs
-4 MCMC chains in parallel).
-As a default, rstan runs "silently" (\code{refresh=0}). To see sampling progress, please
-set e.g. \code{loocv(data, refresh = 500)}.
+The values returned by \code{loocv()} can be used to understand how any
+one group affects the overall result, as well as how well the model
+predicts the omitted group.
 
-For more information on cross-validation see
+This function automatically runs K baggr models, leaving out one group at a time,
+and then calculates expected log predictive density (ELPD) for
+that group (see Gelman et al 2013). The main output is the cross-validation
+information criterion, or -2 times the ELPD averaged over 'K' models.
+This is related to, and often approximated by, the Watanabe-Akaike
+Information Criterion. A value closer to zero (i.e. a smaller number in magnitude)
+means a better fit. For more information on cross-validation see
 \href{http://www.stat.columbia.edu/~gelman/research/published/waic_understand3.pdf}{this overview article}
+
+For running more computation-intensive models, consider setting the mc.cores option before running loocv, e.g. options(mc.cores = 4)
+(by default baggr runs 4 MCMC chains in parallel).
+As a default, rstan runs "silently" (refresh=0).
+To see sampling progress, please set e.g. loocv(data, refresh = 500).
 }
 \examples{
 \donttest{

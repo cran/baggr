@@ -3,17 +3,36 @@
 #' Bayesian inference on parameters of an average treatment effects model
 #' that's appropriate to the supplied
 #' individual- or group-level data, using Hamiltonian Monte Carlo in Stan.
-#' (For overall package help file see [baggr_package])
+#' (For overall package help file see [baggr-package])
+#'
+#'
+#' @importFrom rstan summary
+#' @importFrom rstan sampling
 #'
 #' @param data data frame with summary or individual level data to meta-analyse
 #' @param model if \code{NULL}, detected automatically from input data
 #'              otherwise choose from
 #'              \code{"rubin"}, \code{"mutau"}, \code{"individual"}, \code{"quantiles"}
-#' @param pooling choose from \code{"none"}, \code{"partial"} (default) and \code{"full"}
-#' @param prior list of prior arguments passed directly to each model (see Details)
-#' @param joint_prior If \code{TRUE}, \code{mu} and \code{tau} will have joint distribution.
-#'                    If \code{FALSE}, they have independent priors. Ignored if no control
-#'                    (\code{mu}) data exists.
+#'              (see Details).
+#' @param pooling Type of pooling;
+#'                choose from \code{"none"}, \code{"partial"} (default) and \code{"full"}.
+#'                If you are not familiar with the terms, consult the vignette;
+#'                "partial" can be understood as random effects and "full" as fixed effects
+#' @param prior_hypermean prior distribution for hypermean; you can use "plain text" notation like
+#'              `prior_hypermean=normal(0,100)` or `uniform(-10, 10)`.
+#'              See Details:Priors below for more possible specifications.
+#'              If unspecified, the priors will be derived automatically based on data
+#'              (and printed out in the console).
+#' @param prior_hypersd  prior for hyper-standard deviation, used
+#'                       by Rubin and `"mutau"`` models;
+#'                       same rules apply as for `_hypermean`;
+#' @param prior_hypercor prior for hypercorrelation matrix, used by the `"mutau"` model
+#' @param prior alternative way to specify all priors as a named list with `hypermean`,
+#'              `hypersd`, `hypercor`, e.g. `prior = list(hypermean = normal(0,10))`
+#' @param ppd       logical; use prior predictive distribution? (_p.p.d._) Default is no.
+#'                  If `ppd=TRUE`, Stan model will sample from the prior distributions
+#'                  and ignore `data` in inference. However, `data` argument might still
+#'                  be used to infer the correct model and to set the default priors.
 #' @param outcome   character; column name in (individual-level)
 #'                  \code{data} with outcome variable values
 #' @param group     character; column name in \code{data} with grouping factor;
@@ -30,6 +49,7 @@
 #' @return `baggr` class structure: a list including Stan model fit
 #'          alongside input data, pooling metrics, various model properties.
 #'          If test data is used, mean value of -2*lpd is reported as `mean_lpd`
+#'
 #'
 #' @details
 #'
@@ -52,17 +72,22 @@
 #'
 #' __Models.__ Available models are:
 #'
-#' * for the means: `"rubin"` model for average treatment effect, `"mutau"` version which takes
-#'   into account means of control groups, `"full"`` model which reduces to "mu and tau"
-#'   (if no covariates are used)
+#' * for the means: `"rubin"` model for average treatment effect, `"mutau"`
+#'   version which takes into account means of control groups, `"full"`,
+#'   which works with individual-level data
 #' * "quantiles" model is also available (see Meager, 2019 in references)
 #'
-#'  If no model is specified, the function tries to infer the appropriate model automatically.
+#'  If no model is specified, the function tries to infer the appropriate
+#'  model automatically.
+#'  Additionally, the user must specify type of pooling.
+#'  The default is always partial pooling.
 #'
 #' __Priors.__ It is optional to specify priors yourself,
 #' as the package will try propose an appropriate
-#' prior for the input data if `prior=NULL`.
-#' To set the priors yourself, please refer to the list in the `vignette("baggr")`
+#' prior for the input data if you do not pass a `prior` argument.
+#' To set the priors yourself, use `prior_` arguments. For specifying many priors at once
+#' (or re-using between models), a single `prior = list(...)` argument can be used instead.
+#' Appropriate examples are given in `vignette("baggr")`.
 #'
 #' @author Witold Wiecek, Rachael Meager
 #'
@@ -73,16 +98,37 @@
 #' baggr(df_pooled) #baggr automatically detects the input data
 #' # correct labels, different pooling & passing some options to Stan
 #' baggr(df_pooled, group = "state", pooling = "full", iter = 500)
+#' #change the priors:
+#' baggr(df_pooled, prior_hypermean = normal(5,5))
 #'
+#' # "mu & tau" model, using a built-in dataset
+#' # prepare_ma() can summarise individual-level data
+#' \donttest{
+#' microcredit_summary_data <- prepare_ma(microcredit_simplified,
+#'                                        outcome = "consumerdurables")
+#' baggr(microcredit_summary_data, model = "mutau",
+#'       pooling = "partial", prior_hypercor = lkj(1),
+#'       prior_hypersd = normal(0,10),
+#'       prior_hypermean = multinormal(c(0,0),matrix(c(10,3,3,10),2,2)))
+#' }
+#'
+#'
+#' @importFrom rstan summary
+#' @importFrom rstan sampling
 #' @export
 
-baggr <- function(data, model = NULL, prior = NULL, pooling = "partial",
+baggr <- function(data, model = NULL, pooling = "partial",
+                  prior_hypermean = NULL, prior_hypersd = NULL, prior_hypercor=NULL,
                   # log = FALSE, cfb = FALSE, standardise = FALSE,
                   # baseline = NULL,
-                  joint_prior = TRUE,
+                  prior = NULL, ppd = FALSE,
                   test_data = NULL, quantiles = seq(.05, .95, .1),
                   outcome = "outcome", group = "group", treatment = "treatment",
                   warn = TRUE, ...) {
+
+  # check that it is data.frame of at least 1 row
+  if(!inherits(data, "data.frame") || nrow(data) == 1)
+    stop("data argument must be a data.frame of >1 rows")
 
   # For now we recommend that users format their data before passing to baggr()
   # data <- prepare_ma(data,
@@ -102,12 +148,6 @@ baggr <- function(data, model = NULL, prior = NULL, pooling = "partial",
   # within convert_inptuts(), otherwise it's unchanged
   model <- attr(stan_data, "model")
 
-
-  # choice whether the parameters have a joint prior or not
-  # for now fixed
-  if(model != "rubin")
-    stan_data[["joint"]] <- joint_prior
-
   # remember number of groups:
   n_groups <- attr(stan_data, "n_groups")
 
@@ -119,8 +159,6 @@ baggr <- function(data, model = NULL, prior = NULL, pooling = "partial",
 
   # pooling type
   if(pooling %in% c("none", "partial", "full")) {
-    # if(model %in% c("rubin", "mutau")) {
-    # switch? separate scripts for each pooling type? third way?
     stan_data[["pooling_type"]] <- switch(pooling,
                                           "none" = 0,
                                           "partial" = 1,
@@ -129,30 +167,47 @@ baggr <- function(data, model = NULL, prior = NULL, pooling = "partial",
     stop('Wrong pooling parameter; choose from c("none", "partial", "full")')
   }
 
-  # default priors
-  if(is.null(prior)) {
-    prior <- auto_prior(data, stan_data, model,
-                        outcome = outcome, quantiles = quantiles)
-
-  } else {
-    # !!!check for allowed priors here!!!
+  # Prior settings:
+  if(is.null(prior))
+    prior <- list(hypermean = prior_hypermean,
+                  hypercor  = prior_hypercor,
+                  hypersd   = prior_hypersd)
+  else {
+    if(!is.null(prior_hypermean) ||
+       !is.null(prior_hypercor)  || !is.null(prior_hypersd))
+      message("Both 'prior' and 'prior_' arguments specified. Using 'prior' only.")
+    if(class(prior) != "list" ||
+       !all(names(prior) %in% c('hypermean', 'hypercor', 'hypersd')))
+      stop(paste("Prior argument must be a list with names",
+                 "'hypermean', 'hypercor', 'hypersd'"))
   }
+  # If extracting prior from another model, we need to do a swapsie switcheroo:
+  stan_args <- list(...)
+  if("formatted_prior" %in% names(stan_args)){
+    formatted_prior <- stan_args$formatted_prior
+    stan_args$formatted_prior <- NULL
+  } else { # extract priors from inputs & fill in missing priors
+    formatted_prior <- prepare_prior(prior, data, stan_data, model, quantiles = quantiles)
+  }
+  for(nm in names(formatted_prior))
+    stan_data[[nm]] <- formatted_prior[[nm]]
 
-  # Check priors
-  if(model %in% c("rubin"))
-    if(prior[["prior_upper_sigma_tau"]] < 5*sd(data$tau))
-      message(paste0("Prior for SD(tau) is lower than 5 times the observed",
-                     "SD of effects. Please use caution."))
+  stan_args$object <- stanmodels[[model]]
 
-  for(nm in names(prior))
-    stan_data[[nm]] <- prior[[nm]]
+  if(ppd){
+    if(pooling == "none")
+      stop("Can't use prior predictive distribution with no pooling.")
+    stan_data <- remove_data_for_prior_pred(stan_data)
+  }
+  stan_args$data <- stan_data
 
-  fit <- rstan::sampling(stanmodels[[model]], data = stan_data, ...)
+  fit <- do.call(rstan::sampling, stan_args)
 
   result <- list(
     "data" = data,
     "inputs" = stan_data,
-    "prior" = prior,
+    "user_prior" = prior,
+    "formatted_prior" = formatted_prior,
     "n_groups" = n_groups,
     "n_parameters" = ifelse(model == "quantiles", length(quantiles), 1),
     "effects" = effects,
@@ -163,13 +218,18 @@ baggr <- function(data, model = NULL, prior = NULL, pooling = "partial",
 
   class(result) <- c("baggr")
 
-  result[["pooling_metric"]] <- pooling(result)
+  attr(result, "ppd") <- ppd
+
   if(model == "quantiles")
-    result[["quantiles"]] <- quantiles
-  if(!is.null(test_data)){
-    result[["test_data"]] <- test_data
-    result[["mean_lpd"]] <- -2*mean(rstan::extract(fit, "logpd")[[1]])
+    result[["quantiles"]]    <- quantiles
+  if(!ppd){
+    result[["pooling_metric"]] <- pooling(result)
+    if(!is.null(test_data)){
+      result[["test_data"]]    <- test_data
+      result[["mean_lpd"]]     <- -2*mean(rstan::extract(fit, "logpd[1]")[[1]])
+    }
   }
+
   # Check convergence
   rhat <- rstan::summary(fit)$summary[,"Rhat"]
   rhat <- rhat[!is.nan(rhat)] #drop some nonsensical parameters
@@ -181,4 +241,24 @@ baggr <- function(data, model = NULL, prior = NULL, pooling = "partial",
                    "\n Stan model saved as $fit in the returned object. \n"))
 
   return(result)
+}
+
+check_if_baggr <- function(bg) {
+  if(!inherits(bg, "baggr"))
+    stop("Object of class 'baggr' required.")
+}
+
+remove_data_for_prior_pred <- function(data) {
+  scalars_to0 <- c("K", "N")
+  vectors_to_remove <- c("tau_hat_k", "se_tau_k",
+                         "y", "ITT", "site")
+  for(nm in scalars_to0)
+    if(!is.null(data[[nm]]))
+      data[[nm]] <- 0
+
+  for(nm in vectors_to_remove)
+    if(!is.null(data[[nm]]))
+      data[[nm]] <- array(0, dim = c(0))
+
+  data
 }
