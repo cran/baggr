@@ -1,6 +1,8 @@
 ## ----setup, include = FALSE----------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
+  warning = FALSE,
+  message = FALSE,
   comment = "#>")
 library(baggr)
 library(ggplot2)
@@ -34,26 +36,44 @@ print(baggr_schools)
 #  baggr_schools <- baggr(schools, model = "rubin", pooling = "partial",
 #                         iter = 10000, chains = 8)
 
-## ----fig.width=4---------------------------------------------------------
-baggr_plot(baggr_schools, order = FALSE)
+## ------------------------------------------------------------------------
+pooling(baggr_schools)
 
-## ----eval=FALSE----------------------------------------------------------
-#  baggr_compare(schools)
+## ----fig.width=4---------------------------------------------------------
+plot(baggr_schools, order = FALSE)
+
+## ----fig.width = 4-------------------------------------------------------
+effect_plot(baggr_schools)
+
+## ----echo=TRUE, eval=FALSE-----------------------------------------------
+#  my_baggr_comparison <- baggr_compare(schools)
 
 ## ---- echo=FALSE, eval = TRUE, include = FALSE---------------------------
-my_baggr_plot <- baggr_compare(schools)
+my_baggr_comparison <- baggr_compare(schools)
 
-## ---- echo=TRUE, eval = FALSE--------------------------------------------
-#  my_baggr_plot <- baggr_compare(schools)
+## ----fig.width=5, fig.height=4, echo = TRUE------------------------------
+my_baggr_comparison$plot + 
+  theme_minimal() + 
+  ggtitle("8 schools: model comparison")
 
-## ----fig.width=7, fig.height=4, echo = TRUE------------------------------
-my_baggr_plot$plot + ggtitle("8 schools: model comparison")
+## ---- eval=F, echo=T-----------------------------------------------------
+#  baggr_schools_v2 <- baggr(schools, prior_hypermean = normal(10, 2.5))
 
-## ----loocv, eval = FALSE-------------------------------------------------
-#  loocv_res <- loocv(schools, return_models = FALSE, "rubin", pooling = "partial")
+## ---- eval=T, include=F--------------------------------------------------
+baggr_schools_v2 <- baggr(schools, prior_hypermean = normal(10, 2.5))
 
-## ----echo = FALSE, include = FALSE, eval = TRUE--------------------------
-#this is ugly but effective way to stop output from loocv getting printed
+## ---- fig.width=5, fig.height=5------------------------------------------
+effect_plot("Default model" = baggr_schools, "normal(10, 2.5)" = baggr_schools_v2) +
+  coord_cartesian(xlim = c(-10, 30)) + theme(legend.position = "top")
+baggr_compare("Default model" = baggr_schools, "normal(10, 2.5)" = baggr_schools_v2)
+
+## ---- fig.width=5--------------------------------------------------------
+forest_plot(baggr_schools)
+
+## ---- fig.width=5--------------------------------------------------------
+forest_plot(baggr_schools, show = "both")
+
+## ----loocv, echo = T, results = 'hide', warning = F, message = F---------
 loocv_res <- loocv(schools, return_models = FALSE, "rubin", pooling = "partial")
 
 ## ------------------------------------------------------------------------
@@ -63,15 +83,24 @@ loocv_res
 names(attributes(loocv_res))
 attr(loocv_res, "df")
 
-## ---- echo = FALSE, include = FALSE--------------------------------------
-fit1 <- baggr(data = schools[1:7,], test_data = schools[8,], model = "rubin", pooling = "partial")
-fit2 <- baggr(data = schools[1:7,], test_data = schools[8,], model = "rubin", pooling = "full")
-
-## ---- echo = TRUE, eval = FALSE------------------------------------------
-#  fit1 <- baggr(data = schools[1:7,], test_data = schools[8,], model = "rubin", pooling = "partial")
-#  fit2 <- baggr(data = schools[1:7,], test_data = schools[8,], model = "rubin", pooling = "full")
+## ---- echo = FALSE, include = FALSE, results = 'hide'--------------------
+fit1 <- baggr(data = schools[1:7,], test_data = schools[8,], 
+              model = "rubin", pooling = "partial")
+fit2 <- baggr(data = schools[1:7,], test_data = schools[8,], 
+              model = "rubin", pooling = "full")
 
 ## ------------------------------------------------------------------------
 fit1$mean_lpd
 fit2$mean_lpd
+
+## ----results = 'hide'----------------------------------------------------
+cv_1 <- loocv(data = schools, 
+              model = "rubin", 
+              pooling = "partial")
+cv_2 <- loocv(data = schools, 
+              model = "rubin", 
+              pooling = "full")
+
+## ------------------------------------------------------------------------
+loo_compare(cv_1, cv_2)
 

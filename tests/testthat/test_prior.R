@@ -15,6 +15,7 @@ df_mutau <- data.frame("tau" = c(1, -1, .5, -.5, .7, -.7, 1.3, -1.3),
 test_that("Wrong prior specifications crash baggr()", {
   expect_error(baggr(df_mutau, prior_hypermean = 2))
   expect_error(baggr(df_mutau, prior_hypermean = normal(2, -100)))
+  expect_error(baggr(df_mutau, prior_hypermean = lkj(4)))
   expect_error(baggr(df_mutau, prior_hypermean = list(dist = "not_a_dist", 0, 10)))
   expect_error(baggr(df_mutau, prior_hypermean = list(dist = "not_a_dist")))
   expect_error(baggr(df_mutau, prior_hypermean = list(dist = "normal", a = 5, b = 6)))
@@ -63,7 +64,8 @@ test_that("All possible prior dist's work", {
   expect_error(normal(0, -1))
   expect_error(uniform(0, -1))
   expect_error(cauchy(0, -1))
-  expect_error(multinomial(c(0,0), matrix(c(-1,0,-1,1),2,2)))
+  expect_error(multinormal(c(0,0), matrix(c(-1,0,-1,1),2,2)), "positive")
+  expect_error(multinormal(c(0,0,0), diag(2)), "dimensions")
 })
 
 test_that("Different priors for mutau model", {
@@ -75,4 +77,29 @@ test_that("Different priors for mutau model", {
   expect_error(baggr(df_mutau, prior_hypercor  = multinormal(c(0,0), diag(2))))
   expect_is(bg1, "baggr")
   expect_is(bg2, "baggr")
+})
+
+
+test_that("Prior vs posterior and PPD comparisons work", {
+  # Invalid comparison for prior vs posterior:
+  expect_error(baggr_compare(schools, ppd = TRUE, what = "prior"))
+
+  # Typical PPD objects:
+  bg_ppd1 <- expect_warning(baggr(schools, ppd = T, refresh = 0, iter = 200))
+  bg_ppd2 <- expect_warning(baggr(schools, ppd = T, prior_hypermean = normal(0,10), refresh = 0, iter = 200))
+  expect_is(bg_ppd1, "baggr")
+  expect_is(bg_ppd2, "baggr")
+  # Regular comparison (don't have to say compare = "groups")
+  bgc <- baggr_compare(bg_ppd1, bg_ppd2)
+  expect_is(bgc, "gg")
+
+  # Prior vs posterior
+  bgc2 <- expect_warning(baggr_compare(schools, what = "prior", refresh = 0, iter = 200))
+  expect_is(bgc2, "list")
+
+  # Effect plot of PPD:
+  gg <- effect_plot(bg_ppd1)
+  expect_identical(gg$labels$title, "Possible treatment effect (prior predictive)")
+
+
 })

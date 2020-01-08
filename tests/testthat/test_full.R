@@ -19,8 +19,21 @@ test_that("Basic operations on full data model", {
   expect_error(baggr(ms, rubbish = 41))
   expect_is(pooling(bg_p)[,,1], "matrix")
   expect_is(plot(bg_p), "gg")
+  expect_is(effect_plot(bg_p), "gg")
+  expect_is(forest_plot(bg_p), "vpPath")
   bgc <- try(baggr_compare(bg_n, bg_p, bg_f))
   expect_is(bgc, "gg")
   expect_error(loocv(ms))
 })
 
+test_that("Full model crashes with nonsense inputs", {
+  expect_error(baggr(ms, outcome = 2), "Arguments")
+  expect_error(baggr(ms, group = 2), "Arguments")
+  expect_error(baggr(ms, treatment = 2), "Arguments")
+  expect_error(baggr(ms, treatment = "wrong"), "no column")
+  ms2 <- ms; ms2$treatment <- as.character(ms$treatment)
+  expect_error(baggr(ms2), "has to be numeric")
+  ms2 <- ms; ms2$outcome <- as.character(ms$outcome)
+  expect_error(baggr(ms2), "has to be numeric")
+
+})

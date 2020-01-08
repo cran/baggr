@@ -4,11 +4,15 @@
 \alias{effect_plot}
 \title{Plot posterior distribution for treatment effect}
 \usage{
-effect_plot(...)
+effect_plot(..., transform = NULL)
 }
 \arguments{
 \item{...}{Object(s) of class \code{baggr}. If there is more than one,
 the names of objects will be used as a plot legend (see example).}
+
+\item{transform}{a transformation to apply to the result, should be an R function;
+(this is commonly used when calling \code{group_effects} from other
+plotting or printing functions)}
 }
 \value{
 A ggplot.
@@ -22,11 +26,16 @@ This function plots the \link{effect_draw} for one or more baggr objects.
 bg1 <- baggr(schools, prior_hypersd = uniform(0, 20))
 effect_plot(bg1)
 
-# Compare posterior effects as a function of priors (note ppd=F)
+# Compare how posterior depends on the prior choice
 bg2 <- baggr(schools, prior_hypersd = normal(0, 5))
 effect_plot("Uniform prior on SD"=bg1,
-              "Normal prior on SD"=bg2)
+            "Normal prior on SD"=bg2)
 
+# Compare the priors themselves (ppd=T)
+bg1_ppd <- baggr(schools, prior_hypersd = uniform(0, 20), ppd=TRUE)
+bg2_ppd <- baggr(schools, prior_hypersd = normal(0, 5), ppd=TRUE)
+effect_plot("Uniform prior on SD"=bg1_ppd,
+            "Normal prior on SD"=bg2_ppd)
 
 }
 \seealso{

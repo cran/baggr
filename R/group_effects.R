@@ -7,35 +7,40 @@
 #' @param bg baggr object
 #' @param summary logical; if TRUE returns summary statistics as explained below.
 #' @param interval uncertainty interval width (numeric between 0 and 1), if summarising
-#'
+#' @param transform a transformation to apply to the result, should be an R function;
+#'                  (this is commonly used when calling `group_effects` from other
+#'                  plotting or printing functions)
 #' @return Either a matrix with MCMC samples (if summary = FALSE)
 #'         or a summary of these samples (if summary = TRUE).
 #' @examples
 #' fit1 <- baggr(schools)
 #' group_effects(fit1, summary = TRUE, interval = 0.5)
-#' @details If summary = TRUE, the returned object contains for each study
-#' or group: the posterior medians, the lower and upper bounds of the
+#' @details If summary = TRUE, the returned object contains, for each study
+#' or group, the following 5 values:
+#' the posterior medians, the lower and upper bounds of the
 #' uncertainty intervals using the central posterior credible interval
-#' of width specified in the argument "interval", the posterior mean, and
+#' of width specified in the argument `interval`, the posterior mean, and
 #' the posterior standard deviation.
 #'
 #' @export
 
-group_effects <- function(bg, summary = FALSE, interval = .95) {
+group_effects <- function(bg, summary = FALSE, transform = NULL, interval = .95) {
   check_if_baggr(bg)
 
   # m <- as.matrix(bg$fit)
+  if(attr(bg , "ppd"))
+    stop("There are no group effects in prior predictive distribution baggr objects.")
 
   if(bg$pooling == "full"){
-    tau <- treatment_effect(bg)[["tau"]] #for consistency we have a separate function for this
+    tau <- treatment_effect(bg)[["tau"]]
     k <- attr(bg$inputs, "n_groups")
     m <- replicate(k, tau)
     if(length(dim(m)) == 3)
       m <- aperm(m, c(1, 3, 2))
 
-  } else{
+  } else {
     # choose correct columns for the given models:
-    if(bg$model %in% c("rubin", "mutau")) {
+    if(bg$model %in% c("rubin", "mutau", "logit")) {
       #replace by extract:
       # m <- m[, grepl("^tau_k", colnames(m))]
       m <- rstan::extract(bg$fit, pars = "tau_k")[[1]]
@@ -69,6 +74,9 @@ group_effects <- function(bg, summary = FALSE, interval = .95) {
     dimnames(m)[[1]] <- c("lci", "median", "uci", "mean", "sd")
     m <- aperm(m, c(2,1,3))
   }
+
+  if(!is.null(transform))
+    m <- do.call(transform, list(m))
 
   return(m)
 }

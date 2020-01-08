@@ -1,5 +1,20 @@
-# Extracts priors specified by the user;
-# Then, if any priors are missing, sets priors for all baggr models
+#' Prepare prior values for Stan models in baggr
+#'
+#' This function first extracts and prepares priors passed by the user.
+#' Then, if any necessary priors are missing, it sets them automatically
+#' and notifies user about these automatic choices.
+#'
+#' @param prior `prior` argument passed from [baggr] call
+#' @param data  `data` another argument in [baggr]
+#' @param stan_data list of inputs that will be used by sampler
+#'                  this is already pre-obtained through [convert_inputs]
+#' @param model same as in [baggr]
+#' @param quantiles  same as in [baggr]
+#'
+#' @return A named list with prior values that can be appended to `stan_data`
+#'         and passed to a Stan model.
+#'
+
 
 prepare_prior <- function(prior, data, stan_data, model,
                           quantiles = c()) {
@@ -9,13 +24,22 @@ prepare_prior <- function(prior, data, stan_data, model,
   prior_list <- list()
 
   # message("Automatically setting prior values:")
-  if(model %in% c("rubin")) {
+  if(model == "logit") {
+    # Swap data for summary data for logOR,
+    # then proceed as you would in Rubin model
+    pma_data <- data.frame(outcome = stan_data$y,
+                           group = stan_data$site,
+                           treatment = stan_data$treatment)
+    data <- prepare_ma(pma_data, effect = "logOR")
+  }
+  if(model %in% c("rubin", "logit")) {
     # Hypermean
     if(is.null(prior$hypermean)){
-      prior_list <- set_prior_val(prior_list, "prior_hypermean", normal(0, 10*max(data$tau)))
+      val <- 10*max(abs(data$tau))
+      prior_list <- set_prior_val(prior_list, "prior_hypermean", normal(0, val))
       message("Set hypermean prior according to max effect:")
       message(paste0("* tau ~ Normal(0, (10*",
-                     format(max(data$tau), digits = 2), ")^2)"))
+                     format(val/10, digits = 2), ")^2)"))
     } else {
       prior_list <- set_prior_val(prior_list, "prior_hypermean", prior$hypermean)
     }
@@ -36,7 +60,7 @@ prepare_prior <- function(prior, data, stan_data, model,
     }
 
     check_eligible_priors(prior_list,
-                          list("hypersd"   = c("normal", "uniform"),
+                          list("hypersd"   = c("normal", "uniform", "cauchy"),
                                "hypermean" = c("normal", "uniform", "cauchy")))
   }
 
@@ -45,8 +69,8 @@ prepare_prior <- function(prior, data, stan_data, model,
 
     # Hypermean
     if(is.null(prior$hypermean)){
-      val1 <- 100*max(data$mu)
-      val2 <- 100*max(data$tau)
+      val1 <- 100*max(abs(data$mu))
+      val2 <- 100*max(abs(data$tau))
       prior_list <- set_prior_val(prior_list, "prior_hypermean",
                                   multinormal(c(0,0), c(val1, val2)*diag(2)))
       message("Set hypermean prior according to max effect:")

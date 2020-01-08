@@ -4,15 +4,21 @@
 \alias{baggr_plot}
 \title{Plotting method in baggr package}
 \usage{
-baggr_plot(bg, mean = FALSE, style = "intervals", prob = 0.5,
-  prob_outer = 0.95, vline = TRUE, order = TRUE, ...)
+baggr_plot(bg, hyper = FALSE, style = "intervals", transform = NULL,
+  prob = 0.5, prob_outer = 0.95, vline = TRUE, order = TRUE, ...)
 }
 \arguments{
 \item{bg}{object of class \code{baggr}}
 
-\item{mean}{logical; plot mean treatment effect alongside individual study effects?}
+\item{hyper}{logical; show hypereffect as the last row of the plot?}
 
 \item{style}{one of \code{areas}, \code{intervals}}
+
+\item{transform}{a function (e.g. \code{exp()}, \code{log()}) to apply to the
+values of group (and hyper, if \code{hyper=TRUE}) effects
+before plotting; when working with effects that are on
+log scale, exponent transform is used automatically, you can
+plot on log scale by setting \code{transform = identity}}
 
 \item{prob}{Probability mass for the inner interval in visualisation}
 
@@ -38,7 +44,9 @@ plot(fit, style = "areas", order = FALSE)
 
 }
 \seealso{
-\link[bayesplot:MCMC-intervals]{bayesplot::MCMC-intervals}
+\link[bayesplot:MCMC-intervals]{bayesplot::MCMC-intervals} for more information about \emph{bayesplot} functionality;
+\link{forest_plot} for a typical meta-analysis alternative; \link{effect_plot} for plotting
+treatment effects for a new group
 }
 \author{
 Witold Wiecek, Rachael Meager

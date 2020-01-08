@@ -15,6 +15,8 @@ bibliography: baggr.bib
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
+  warning = FALSE,
+  message = FALSE,
   comment = "#>")
 library(baggr)
 library(ggplot2)
@@ -25,8 +27,8 @@ baggr_schools <- baggr(schools, model = "rubin", pooling = "partial")
 ```
 
 
-
-_This vignette is - like the package itself - still under construction. We encourage your feedback._
+This vignette is written for _baggr_ users who want to learn about (Bayesian) meta-analysis concepts and analyse continuous data. If you are looking for information specific to binary data, please read `vignette("baggr_binary")`.
+This article - like the package itself - is still under construction. We encourage your feedback.
 
 _baggr_ (pronounced "bagger" or "badger" and short for Bayesian Aggregator) is a package for aggregating evidence on causal effects measured in several separate and different instances. These instances may be different studies, groups, locations or "sites" however conceptualised. We refer to these separate pieces of evidence as "groups" for the remainder of this vignette When each group is a study, the model is that of _meta-analysis_, but aggregation of evidence is not limited to this case.
 
@@ -204,64 +206,141 @@ Other warnings you may see involve "divergent transitions". While not as serious
 
 ## Measuring "pooling"
 
-It is often useful to measure the extent to which the hierarchical model is "pooling" or sharing information across the $K$ groups in the process of aggregation. Baggr automatically computes such a metric, and as one can see above, printing a baggr object displays a column called "pooling". This column contains the classical pooling metric that describes the extent to which each of the group effects is "shrunk" towards their common mean in the process of aggregating information across groups. While there are many different measures of pooling, and the appropriate metric depends on the specific research question, baggr computes by default the @gelman_bayesian_2006 metric, which delivers the percentage of total variation in $\hat{\tau_k}$ around $\tau$ which is attributed to sampling variation within group $k$:
-\begin{equation}
-\omega_{\tau_k} = \frac{\hat{se}^2_{k}}{\hat{se}^2_{k} + \sigma^2_{\tau}}.
-\end{equation}
-Baggr uses the posterior mean of $\sigma^2_{\tau}$ to compute this metric (capacity to print bounds is coming soon). 
+It is often useful to measure the extent to which the hierarchical model is "pooling" or sharing information across the groups in the process of aggregation. _Baggr_ automatically computes and prints such a metric, as seen above. You can access more details by writing `pooling(baggr_schools)` or `heterogeneity(baggr_schools)`.
 
-One can interpret the metric as follows: if this pooling metric is large and approaching 1, the analyst gains a lot by pooling information across groups; if this is small and approaching 0, one gains little from the aggregated analysis relative to inference on each group separately ("no pooling"). For further discussion see @gelman_bayesian_2006, Gelman and Pardoe (2006) or Meager (2019). 
+### Estimate of pooling in each group
+
+In the output above we can see a "pooling" column next to each group. This is a statistic due to @gelman_bayesian_2006.
+
+In a partial pooling model (see [baggr]), group $k$ (e.g. study) has a treatment effect
+estimate, with some SE around the real $\tau_k$, i.e.
+$\hat{\tau_k} \sim \mathcal{N}(\tau_k, \hat{se_k})$
+(\hat{se_k} itself is an estimate of the true $se_k$).
+Each $\tau_k$ itself is distributed with mean $\tau$ and variance $\sigma_{\tau}^2$.
+
+The quantity of interest is ratio of variability in $\tau$ to total variability.
+By convention, we subtract it from 1, to obtain a _pooling metric_ $p$.
+
+$$p = 1 - \frac{\sigma_{\tau}^2}{\sigma_{\tau}^2 + se_k^2}$$
+
+* If $p < 0.5$, that means the variation across studies is higher than variation within studies.
+* Values close to 1 indicate nearly full pooling. Variation across studies dominates.
+* Values close to 0 -- no pooling. Variation within studies dominates.
+
+Note that, since $\sigma_{\tau}^2$ is a Bayesian parameter (rather than a single fixed value)
+$p$ is also a parameter. It is typical for $p$ to have very high dispersion, as in many cases we
+cannot precisely estimate $\sigma_{\tau}$. That is certainly the case in our example:
+
+```{r}
+pooling(baggr_schools)
+```
 
 
 
+### Overall pooling (in the model)
+
+Typically, it is a single measure of heterogeneity that is of main interest to researchers.
+Such "big" estimate of pooling $P$ is analogous to averaging $p$ across groups:
+
+$$P = 1 - \frac{\sigma_{\tau}^2}{\sigma_{\tau}^2 + \text{E}(se_k^2)}$$
+
+where \text{E} is average over $K$ groups. Note that the denominator in the formula above is
+an application of the law of total variance to $\hat{\tau_k}$, i.e.
+$\text{Var}(\hat{\tau_k})$ is a sum of between-study variance ($\text{Var}({\tau_k})$) and
+average within-study variance ($\text{E}(se_k^2)$). @von_hippel_heterogeneity_2015 
+provides more details.
+
+In many contexts, i.e. medical statistics, it is typical to report $1-P$, called $I^2$
+(see @higgins_measuring_2003-2 for an overview). Higher values of _I-squared_ indicate higher heterogeneity.
+
+Same as for group-specific estimates, $P$ is a Bayesian parameter and its dispersion can be high.
 
 
 
 ## Plotting and model comparison in _baggr_
 
-A fundamental step to understanding the model is to plot the posterior distributions. _baggr_ has several automatic plot functions which you can access by calling `baggr_plot()`; these visuals are based on `bayesplot` package. 
+A fundamental step to understanding the model is to plot the posterior distributions. _baggr_ has several automatic plot functions which you can access by calling `baggr_plot()` or, equivalently, using the default plot function; these visuals are based on _bayesplot_ package. 
 Plotting functions always take `baggr` class object as their first argument. By default, means and 95\% posterior intervals of the effects _in each group_ are shown. Extra options are available, such as whether to order the results by effect size. For the 8 schools Rubin model we have
-
+  
 ```{r fig.width=4}
-baggr_plot(baggr_schools, order = FALSE)
+plot(baggr_schools, order = FALSE)
 ```
 
-__[Model comparison will be included in the next package release.]__
+Similarly important is the plot of potential treatment effects, obtained by repeatedly drawing hypermean and hypervariance values, then drawing from normal distribution conditional on these values.
 
-The second step to understanding the model is to compare it to other models we could have fit: this can be done automatically in _baggr_ using the command `baggr_compare`. The default Rubin model (which we have selected explicitly above) is that of partial pooling. When using `baggr_compare` without any extra arguments, full pooling, no pooling and partial pooling versions of the model will be fit:
-
-```{r eval=FALSE}
-baggr_compare(schools)
+```{r fig.width = 4}
+effect_plot(baggr_schools)
 ```
 
-(We will show the output of this function below.) Different comparisons, e.g. of models using different priors, are also possible. 
+However, the viewpoint of building a model, the most important plots are the ones that directly compare many possible models.
 
-The `baggr_compare` command also produces an automatic comparison plot made by calling `ggplot2` package. Because the output object of baggr_compare is a `ggplot` object you can edit it further yourself and built on it as you would any `ggplot` object. For example, the default title for the plot is just "mean", so here I've changed it to be more descriptive:
+### Basic model comparison with *baggr_compare*
+
+The default Rubin model (which we have selected explicitly above) is that of partial pooling. When using `baggr_compare` without any extra arguments, full pooling, no pooling and partial pooling versions of the model will be fit:
+
+```{r echo=TRUE, eval=FALSE}
+my_baggr_comparison <- baggr_compare(schools)
+```
+
+The result of the comparison includes all the models, but it also produces an automatic comparison plot. Because the output object of baggr_compare is a `ggplot` object you can edit it further yourself and build on it as you would any `ggplot` object by, for example, changing theme or labels:
 
 ```{r, echo=FALSE, eval = TRUE, include = FALSE}
-my_baggr_plot <- baggr_compare(schools)
+my_baggr_comparison <- baggr_compare(schools)
 ```
 
-```{r, echo=TRUE, eval = FALSE}
-my_baggr_plot <- baggr_compare(schools)
+```{r fig.width=5, fig.height=4, echo = TRUE}
+my_baggr_comparison$plot + 
+  theme_minimal() + 
+  ggtitle("8 schools: model comparison")
 ```
 
-```{r fig.width=7, fig.height=4, echo = TRUE}
-my_baggr_plot$plot + ggtitle("8 schools: model comparison")
+
+### Comparing existing models, understanding impact of the prior
+
+The comparison can be made not just for different types of pooling, but for any number of models which include the same groups. A typical example is comparing two models on the same data, but with different priors.
+
+Consider this model with alternative, very strong priors:
+
+```{r, eval=F, echo=T}
+baggr_schools_v2 <- baggr(schools, prior_hypermean = normal(10, 2.5))
+```
+
+```{r, eval=T, include=F}
+baggr_schools_v2 <- baggr(schools, prior_hypermean = normal(10, 2.5))
+```
+
+We can compare it with the previous model by providing both models as arguments to `baggr_compare` and `effects_plot`. It's good to name the arguments, as these names will be used to label them:
+
+```{r, fig.width=5, fig.height=5}
+effect_plot("Default model" = baggr_schools, "normal(10, 2.5)" = baggr_schools_v2) +
+  coord_cartesian(xlim = c(-10, 30)) + theme(legend.position = "top")
+baggr_compare("Default model" = baggr_schools, "normal(10, 2.5)" = baggr_schools_v2)
 ```
 
 
+### Forest plots for the models
+
+Forest plots are a typical for reporting meta-analysis results. We adapted the default functionality from _forestplot_ to work with _baggr_ objects. You can choose to display 1) input data for groups, and/or, 2) posterior distributions for groups. In both cases these are followed by a display mean treatment effect. The default is 1):
+
+```{r, fig.width=5}
+forest_plot(baggr_schools)
+```
+
+The plots can be modified by passing extra arguments -- see `?forestplot`. It's also possible to display both 1) and 2):
+
+```{r, fig.width=5}
+forest_plot(baggr_schools, show = "both")
+```
 
 ## Cross-validation in _baggr_
 
-_Baggr_ has built-in, automated leave-one-out cross validation for its models, where the "one" always refers to one group. This naturally corresponds to the question of how much any one group has contributed to the overall inference. Therefore, if you have $K$ groups, using the `loocv()` will run your model of choice $K$ times. Be aware that this may take a while even for simple models. (You should see a progress bar in your terminal window.) The `loocv()` function takes in the same arguments as `baggr()`, plus an option (`return_models`) for whether to return all the models or just the summary statistics. For the 8 schools example we can do
+_Baggr_ has built-in, automated leave-one-out cross validation for its models. The values returned by `loocv()` can be used to understand how any one group affects the overall result, as well as how well the model predicts the omitted group.
 
-```{r loocv, eval = FALSE}
-loocv_res <- loocv(schools, return_models = FALSE, "rubin", pooling = "partial")
-```
+This function automatically runs $K$ baggr models, leaving out one group at a time, and then calculates expected log predictive density (ELPD) for that group (see @gelman_understanding_2014). The main output is the cross-validation information criterion, or -2 times the ELPD averaged over $K$ models. This is related to, and often approximated by, the Watanabe-Akaike Information Criterion. A value closer to zero (i.e. a smaller number in magnitude) means a better fit. For more information on cross-validation see this [overview article](http://www.stat.columbia.edu/~gelman/research/published/waic_understand3.pdf).
 
-```{r echo = FALSE, include = FALSE, eval = TRUE}
-#this is ugly but effective way to stop output from loocv getting printed
+Therefore, if you have $K$ groups, using the `loocv()` will run your model of choice $K$ times. Be aware that this may take a while even for simple models. (You should see a progress bar in your terminal window.) The `loocv()` function takes in the same arguments as `baggr()`, plus an option (`return_models`) for whether to return all the models or just the summary statistics. For the 8 schools example we can do
+
+```{r loocv, echo = T, results = 'hide', warning = F, message = F}
 loocv_res <- loocv(schools, return_models = FALSE, "rubin", pooling = "partial")
 ```
 
@@ -269,9 +348,7 @@ loocv_res <- loocv(schools, return_models = FALSE, "rubin", pooling = "partial")
 loocv_res
 ```
 
-The main output is $-2$ times the log predictive density (_lpd_) summed over 8 models, which corresponds to the Watanabe-Akaike Information Criterion. A WAIC value closer to zero (i.e. a smaller number in magnitude) means a better fit. 
-
-More data are stored in `loocv()` output, and can be accessed via `attributes()`, e.g. the mean treatment effects, their variability and _lpd_ for each model that are stored in the attribute `df`:
+The `loocv()` output contains more than just the matrix it prints, and this additional information can be accessed via `attributes()`, e.g. the mean treatment effects, their variability and _elpd_ for each model that are stored in the attribute `df`:
 
 ```{r}
 names(attributes(loocv_res))
@@ -280,14 +357,11 @@ attr(loocv_res, "df")
 
 This data frame can then be used to examine or compute the variation in the inference on $\tau$ in the absence of each group. If the user is interested in manually checking the consequences of excluding a particular group or set of groups, this is also possible in _baggr_ using subsetting. For example, suppose that we want to run the Rubin model on school groups 1-7 and predict the effect in the 8th school. The code below shows how you can specify a subset of the dataframe as your "data" argument, and then designate another subset as the "testing" holdout set by assigning it to the argument "test_data" in the baggr command. Here we have done it for both partial and full pooling:
 
-```{r, echo = FALSE, include = FALSE}
-fit1 <- baggr(data = schools[1:7,], test_data = schools[8,], model = "rubin", pooling = "partial")
-fit2 <- baggr(data = schools[1:7,], test_data = schools[8,], model = "rubin", pooling = "full")
-```
-
-```{r, echo = TRUE, eval = FALSE}
-fit1 <- baggr(data = schools[1:7,], test_data = schools[8,], model = "rubin", pooling = "partial")
-fit2 <- baggr(data = schools[1:7,], test_data = schools[8,], model = "rubin", pooling = "full")
+```{r, echo = FALSE, include = FALSE, results = 'hide'}
+fit1 <- baggr(data = schools[1:7,], test_data = schools[8,], 
+              model = "rubin", pooling = "partial")
+fit2 <- baggr(data = schools[1:7,], test_data = schools[8,], 
+              model = "rubin", pooling = "full")
 ```
 
 We can compare the performance of the two models using the mean log predictive density. This itself is a density as the name suggests so we will compute the log expected value of this density: here, as before, a number closer to zero is better. In this case the full pooling model actually does slightly better:
@@ -295,6 +369,23 @@ We can compare the performance of the two models using the mean log predictive d
 ```{r}
 fit1$mean_lpd
 fit2$mean_lpd
+```
+
+If we run the full `loocv` for both models, we can estimate the difference between the ELPD of those models as well as the standard error of that difference. As an example, let's consider the two models above.
+
+```{r results = 'hide'}
+cv_1 <- loocv(data = schools, 
+              model = "rubin", 
+              pooling = "partial")
+cv_2 <- loocv(data = schools, 
+              model = "rubin", 
+              pooling = "full")
+```
+
+We can compare those fits with `loo_compare`, which gives use the differences in ELPD for the various models we pass it. Generally it is important to pay attention to _both_ the difference in the predictive density and also the standard error of that difference.
+
+```{r}
+loo_compare(cv_1, cv_2)
 ```
 
 ## References

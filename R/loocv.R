@@ -26,10 +26,11 @@
 #' means a better fit. For more information on cross-validation see
 #' [this overview article](http://www.stat.columbia.edu/~gelman/research/published/waic_understand3.pdf)
 #'
-#' For running more computation-intensive models, consider setting the mc.cores option before running loocv, e.g. options(mc.cores = 4)
+#' For running more computation-intensive models, consider setting the
+#' `mc.cores` option before running loocv, e.g. `options(mc.cores = 4)`
 #' (by default baggr runs 4 MCMC chains in parallel).
-#' As a default, rstan runs "silently" (refresh=0).
-#' To see sampling progress, please set e.g. loocv(data, refresh = 500).
+#' As a default, rstan runs "silently" (`refresh=0`).
+#' To see sampling progress, please set e.g. `loocv(data, refresh = 500)`.
 #'
 #' @examples
 #' \donttest{
@@ -42,8 +43,11 @@
 #' @author Witold Wiecek
 #' @importFrom utils txtProgressBar
 #' @importFrom utils setTxtProgressBar
+#' @references
+#' Gelman, Andrew, Jessica Hwang, and Aki Vehtari.
+#' “Understanding Predictive Information Criteria for Bayesian Models.”
+#' Statistics and Computing 24, no. 6 (November 2014): 997–1016. https://doi.org/10.1007/s11222-013-9416-2.
 #' @export
-#'
 
 loocv <- function(data, return_models = FALSE, ...) {
   # Set prior, if not specified by the user
@@ -61,7 +65,7 @@ loocv <- function(data, return_models = FALSE, ...) {
   # } else {
   #   temp_cores <- FALSE
   # }
-  temp_cores <- FALSE
+  # temp_cores <- FALSE
 
   # Model with all of data:
   full_fit <- try(baggr(data, refresh = 0, ...))
@@ -145,22 +149,110 @@ loocv <- function(data, return_models = FALSE, ...) {
       "lpd" = unlist(loglik)),
     full_model = full_fit,
     prior = args[["prior"]],
-    K = K
+    K = K,
+    pointwise = elpds
   )
   if(return_models)
     out$models <- kfits
   class(out) <- "baggr_cv"
 
-  if(temp_cores)
-    options(mc.cores = NULL)
+  # if(temp_cores)
+    # options(mc.cores = NULL)
 
   return(out)
 }
 
+#' Check if something is a baggr_cv object
+#' @param x object to check
+is.baggr_cv <- function(x) {
+  inherits(x, "baggr_cv")
+}
+
+#' Compare fitted models on loo
+#' @param x An object of class `baggr_cv` or a list of such objects.
+#' @param ... Additional objects of class "baggr_cv"
+#' @export loo_compare
+#' @examples
+#' \donttest{
+#' # 2 models with more/less informative priors
+#' cv_1 <- loocv(schools, model = "rubin", pooling = "partial")
+#' cv_2 <- loocv(schools, model = "rubin", pooling = "partial",
+#'               prior_hypermean = normal(0, 5), prior_hypersd = cauchy(0,4))
+#' loo_compare(cv_1, cv_2)
+#' }
 #' @export
+loo_compare <- function(x, ...) {
+  UseMethod("loo_compare")
+}
+
+#' @aliases loo_compare
+#' @export
+loo_compare.baggr_cv <- function(x, ...) {
+  if (is.baggr_cv(x)) {
+    dots <- list(...)
+    loos <- c(list(x), dots)
+  } else {
+    if (!is.list(x) || !length(x)) {
+      stop("'x' must be a list if not a 'loo' object.")
+    }
+    loos <- x
+  }
+  if (!all(sapply(loos, is.baggr_cv))) {
+    stop("All inputs should have class 'baggr_cv'.")
+  }
+  if (length(loos) <= 1L) {
+    stop("'loo_compare' requires at least two models.")
+  }
+  Ns <- sapply(loos, function(x) nrow(x$df))
+  if (!all(Ns == Ns[1L])) {
+    stop("Not all models have the same number of data points.")
+  }
+
+  elpds <- lapply(loos, function(x) x$pointwise)
+  comp <- Reduce(cbind, elpds)
+
+  diffs <- list()
+
+  for(i in 2:ncol(comp)) {
+    diffname <- paste0("Model 1", " - ", "Model ", i)
+    rawdiffs <- comp[,1] - comp[,i]
+    diffs[[i-1]] <-
+      matrix(nrow = 1, ncol = 2,
+             c(sum(rawdiffs),
+                     sqrt(length(rawdiffs))*sd(rawdiffs)),
+               dimnames = list(diffname, c("ELPD", "ELPD SE")))
+  }
+
+  diffs <- Reduce(rbind, diffs)
+  class(diffs) <- c("compare_baggr_cv", class(comp))
+  diffs
+}
+
+#' Print baggr_cv comparisons
+#' @param x baggr_cv comparison to print
+#' @param digits number of digits to print
+#' @param ... additional arguments for s3 consistency
 #' @importFrom testthat capture_output
 #' @importFrom crayon bold
-print.baggr_cv <- function(x, digits = 2, ...) {
+#' @export
+print.compare_baggr_cv <- function(x, digits = 3, ...) {
+  mat <- as.matrix(x)
+  class(mat) <- "matrix"
+  cat(
+    crayon::bold(paste0("Comparison of cross-validation\n")),
+    "\n",
+    testthat::capture_output(print(signif(mat, digits = digits)))
+  )
+}
+
+#' Print baggr cv objects nicely
+#' @param x baggr_cv object to print
+#' @param digits number of digits to print
+#' @param ... additional arguments for s3 consistency
+#' @importFrom testthat capture_output
+#' @importFrom crayon bold
+#' @export
+print.baggr_cv <- function(x, digits = 3, ...) {
 
   mat <- matrix(nrow = 2, ncol = 2)
 
@@ -173,10 +265,7 @@ print.baggr_cv <- function(x, digits = 2, ...) {
   cat(
     crayon::bold(paste0("Based on ", x$K, "-fold cross-validation\n")),
     "\n",
-    testthat::capture_output(print(mat, digits = digits))
+    testthat::capture_output(print(signif(mat, digits = digits)))
   )
 
 }
-
-
-

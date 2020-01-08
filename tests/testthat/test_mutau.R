@@ -75,9 +75,9 @@ test_that("Various attr of baggr object are correct", {
 })
 
 test_that("Data are available in baggr object", {
-  expect_identical(bg5_n$data, df_mutau)
-  expect_identical(bg5_p$data, df_mutau)
-  expect_identical(bg5_f$data, df_mutau)
+  expect_is(bg5_n$data, "data.frame")
+  expect_is(bg5_p$data, "data.frame")
+  expect_is(bg5_f$data, "data.frame")
 })
 
 test_that("Pooling metrics", {
@@ -105,6 +105,8 @@ test_that("Pooling metrics", {
 test_that("Calculation of effects works", {
   expect_is(group_effects(bg5_p), "array")
   expect_is(treatment_effect(bg5_p), "list")
+  expect_length(treatment_effect(bg5_p, summary = T)$tau, 5)
+  expect_length(treatment_effect(bg5_p, summary = T)$sigma_tau, 5)
 
   expect_identical(dim(group_effects(bg5_n)), as.integer(c(200, 8 , 1)))
   expect_identical(dim(group_effects(bg5_p)), as.integer(c(200, 8 , 1)))
@@ -117,6 +119,9 @@ test_that("Plotting works", {
   expect_is(plot(bg5_n), "gg")
   expect_is(plot(bg5_p, order = TRUE), "gg")
   expect_is(plot(bg5_f, order = FALSE), "gg")
+  expect_is(forest_plot(bg5_n), "vpPath")
+  expect_is(forest_plot(bg5_p), "vpPath")
+  expect_is(forest_plot(bg5_f), "vpPath")
   # but we can crash it easily if
   expect_error(plot(bg5_n, style = "rubbish"), "argument must be one of")
 })
@@ -132,7 +137,7 @@ test_that("Test data can be used in the mu tau model", {
 
   # wrong test_data
   df_na <- df_mutau[7:8,]; df_na$tau <- NULL
-  expect_error(baggr(df_mutau[1:6,], test_data = df_na), "must be of the same format as input")
+  expect_error(baggr(df_mutau[1:6,], test_data = df_na))
 })
 
 

@@ -18,6 +18,10 @@
 #'                choose from \code{"none"}, \code{"partial"} (default) and \code{"full"}.
 #'                If you are not familiar with the terms, consult the vignette;
 #'                "partial" can be understood as random effects and "full" as fixed effects
+#' @param effect Label for effect. Will default to "mean" in most cases, "log OR" in logistic model,
+#'               quantiles in `quantiles` model etc.
+#'               These labels are used in various print and plot outputs.
+#'               Comparable models (e.g. in [baggr_compare]) should have same `effect`.
 #' @param prior_hypermean prior distribution for hypermean; you can use "plain text" notation like
 #'              `prior_hypermean=normal(0,100)` or `uniform(-10, 10)`.
 #'              See Details:Priors below for more possible specifications.
@@ -118,6 +122,7 @@
 #' @export
 
 baggr <- function(data, model = NULL, pooling = "partial",
+                  effect = NULL,
                   prior_hypermean = NULL, prior_hypersd = NULL, prior_hypercor=NULL,
                   # log = FALSE, cfb = FALSE, standardise = FALSE,
                   # baseline = NULL,
@@ -136,6 +141,9 @@ baggr <- function(data, model = NULL, pooling = "partial",
   #                    summarise = FALSE, cfb = cfb,
   #                    treatment=treatment, group=group,
   #                    outcome=outcome, baseline=baseline)
+  attr(data, "outcome") <- outcome
+  attr(data, "group") <- group
+  attr(data, "treatment") <- treatment
 
   stan_data <- convert_inputs(data,
                               model,
@@ -152,10 +160,23 @@ baggr <- function(data, model = NULL, pooling = "partial",
   n_groups <- attr(stan_data, "n_groups")
 
   # labels for what the effect parameters represent:
-  if(model == "quantiles")
-    effects <- paste0(100*quantiles, "% quantile mean")
-  else
-    effects <- "mean"
+
+
+  if(model == "quantiles"){
+    if(is.null(effect))
+      effect <- paste0(100*quantiles, "% quantile mean")
+    else if(length(effect) == 1)
+      effect <- paste0(100*quantiles, "% quantile on ", effect)
+    else if(length(length(effect) != length(quantiles)))
+      stop("'effect' must be of length 1 or same as number of quantiles")
+  }
+  if(model == "logit"){
+    if(is.null(effect))
+      effect <- "logOR"
+  }
+  # In all other cases we set it to mean
+  if(is.null(effect))
+    effect <- "mean"
 
   # pooling type
   if(pooling %in% c("none", "partial", "full")) {
@@ -210,7 +231,7 @@ baggr <- function(data, model = NULL, pooling = "partial",
     "formatted_prior" = formatted_prior,
     "n_groups" = n_groups,
     "n_parameters" = ifelse(model == "quantiles", length(quantiles), 1),
-    "effects" = effects,
+    "effects" = effect,
     "pooling" = pooling,
     "fit" = fit,
     "model" = model
@@ -219,6 +240,13 @@ baggr <- function(data, model = NULL, pooling = "partial",
   class(result) <- c("baggr")
 
   attr(result, "ppd") <- ppd
+
+  if(grepl("individual", attr(stan_data, "data_type")))
+    result$summary_data <- prepare_ma(data,
+                                      effect = ifelse(model == "logit", "logOR", "mean"),
+                                      group = attr(data, "group"),
+                                      treatment = attr(data, "treatment"),
+                                      outcome = attr(data, "outcome"))
 
   if(model == "quantiles")
     result[["quantiles"]]    <- quantiles
@@ -251,7 +279,7 @@ check_if_baggr <- function(bg) {
 remove_data_for_prior_pred <- function(data) {
   scalars_to0 <- c("K", "N")
   vectors_to_remove <- c("tau_hat_k", "se_tau_k",
-                         "y", "ITT", "site")
+                         "y", "treatment", "site")
   for(nm in scalars_to0)
     if(!is.null(data[[nm]]))
       data[[nm]] <- 0

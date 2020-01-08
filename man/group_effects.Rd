@@ -4,12 +4,16 @@
 \alias{group_effects}
 \title{Extract baggr study effects}
 \usage{
-group_effects(bg, summary = FALSE, interval = 0.95)
+group_effects(bg, summary = FALSE, transform = NULL, interval = 0.95)
 }
 \arguments{
 \item{bg}{baggr object}
 
 \item{summary}{logical; if TRUE returns summary statistics as explained below.}
+
+\item{transform}{a transformation to apply to the result, should be an R function;
+(this is commonly used when calling \code{group_effects} from other
+plotting or printing functions)}
 
 \item{interval}{uncertainty interval width (numeric between 0 and 1), if summarising}
 }
@@ -23,10 +27,11 @@ each group's effect, or a summary of these draws. This is an internal
 function currently used as a helper for plotting and printing of results.
 }
 \details{
-If summary = TRUE, the returned object contains for each study
-or group: the posterior medians, the lower and upper bounds of the
+If summary = TRUE, the returned object contains, for each study
+or group, the following 5 values:
+the posterior medians, the lower and upper bounds of the
 uncertainty intervals using the central posterior credible interval
-of width specified in the argument "interval", the posterior mean, and
+of width specified in the argument \code{interval}, the posterior mean, and
 the posterior standard deviation.
 }
 \examples{

@@ -82,9 +82,9 @@ test_that("Various attr of baggr object are correct", {
 })
 
 test_that("Data are available in baggr object", {
-  expect_identical(bg5_n$data, df_pooled)
-  expect_identical(bg5_p$data, df_pooled)
-  expect_identical(bg5_f$data, df_pooled)
+  expect_is(bg5_n$data, "data.frame")
+  expect_is(bg5_p$data, "data.frame")
+  expect_is(bg5_f$data, "data.frame")
 })
 
 test_that("Pooling metrics", {
@@ -131,13 +131,37 @@ test_that("Plotting works", {
   expect_error(plot(bg5_n, style = "rubbish"), "argument must be one of")
 })
 
+
 test_that("printing works", {
   capture_output(print(bg5_n))
   capture_output(print(bg5_p))
+  capture_output(print(bg5_p, group = FALSE))
+  expect_error(print(bg5_p, group = "abc"), "logical")
   capture_output(print(bg5_f))
+  capture_output(print(bg5_ppd))
 })
 
+test_that("Forest plots for Rubin model", {
+  expect_is(forest_plot(bg5_n), "vpPath")
+  expect_is(forest_plot(bg5_p), "vpPath")
+  expect_is(forest_plot(bg5_p, show = "posterior"), "vpPath")
+  expect_is(forest_plot(bg5_p, show = "both"), "vpPath")
+  expect_is(forest_plot(bg5_f), "vpPath")
+  expect_is(forest_plot(bg5_f, graph.pos = 1), "vpPath")
+  expect_error(forest_plot(cars), "baggr objects")
+  expect_error(forest_plot(bg5_p, show = "abc"), "should be one of")
+})
 test_that("Test data can be used in the Rubin model", {
+  # Wrong data type:
+  expect_error(baggr(data = df_pooled, test_data = cars), "is of type")
+
+  # NA values or wrong cols:
+  df2 <- df_pooled; df2$tau[1] <- NA
+  expect_error(baggr(data = df_pooled, test_data = df2), "NA")
+  df_na <- df_pooled[7:8,]; df_na$tau <- NULL
+  expect_error(baggr(df_pooled[1:6,], test_data = df_na), "is of type")
+
+  # This should work:
   bg_lpd <- expect_warning(baggr(df_pooled[1:6,], test_data = df_pooled[7:8,],
                                  iter = 500, refresh = 0))
   expect_is(bg_lpd, "baggr")
@@ -146,9 +170,6 @@ test_that("Test data can be used in the Rubin model", {
   # make sure it's not 0
   expect_equal(mean(rstan::extract(bg_lpd$fit, "logpd[1]")[[1]]), -3.6, tolerance = 1)
 
-  # wrong test_data
-  df_na <- df_pooled[7:8,]; df_na$tau <- NULL
-  expect_error(baggr(df_pooled[1:6,], test_data = df_na), "must be of the same format as input")
 })
 
 
@@ -160,6 +181,7 @@ test_that("Extracting treatment/study effects works", {
   expect_identical(names(treatment_effect(bg5_p)), c("tau", "sigma_tau"))
   expect_is(treatment_effect(bg5_p)$tau, "numeric") #this might change to accommodate more dim's
   expect_message(treatment_effect(bg5_n), "no treatment effect estimated when")
+  expect_length(treatment_effect(bg5_p, summary = T)$tau, 5)
 
   # Drawing values of tau:
   expect_error(effect_draw(cars))
@@ -170,36 +192,13 @@ test_that("Extracting treatment/study effects works", {
 
   # Plotting tau:
   expect_is(effect_plot(bg5_p), "gg")
+  expect_is(effect_plot(bg5_p, bg5_f), "gg")
   expect_is(effect_plot("Model A" = bg5_p, "Model B" = bg5_f), "gg")
-
+  # Crashes when passing nonsense
+  expect_error(effect_plot(cars), "baggr class")
+  expect_error(effect_plot(cars, cars, bg5_f), "baggr class")
 })
 
-
-
-# to-do list for tests -----
-
-# show_model()
-# For this we need a pre-commit hook to copy models from src/ to inst/models
-# check_columns()
-# convert_inputs(): if(required_data != available_data)
-# detect_input_type()
-# mint()
-# prepare_ma()
-# print_baggr()
-# group_effects() (above)
-
-# v0.2
-# baggr_compare()
-# loocv()
-# plot_quantiles()
-# summarise_quantiles_data()
-# mutau, full, qunatiles in
-#   baggr, study effects, trt effects, convert_inputs, pooling_metrics
-# baggr_plot() with multiple effects
-
-
-
-# tests for helper functions -----
 
 test_that("baggr_compare basic cases work with Rubin", {
   # If I pass nothing
@@ -210,6 +209,9 @@ test_that("baggr_compare basic cases work with Rubin", {
   expect_error(baggr_compare(cars))
   # if I pass list of rubbish
   expect_error(baggr_compare("Fit 1" = cars, "Fit 2" = cars))
+  # try to make nonexistant comparison:
+  expect_error(baggr_compare(bg5_p, bg5_n, bg5_f, compare = "sreffects"),
+               "Argument compare")
   # Run models from baggr_compare:
   bgcomp <- expect_warning(baggr_compare(schools,
                                          iter = 200, refresh = 0))
@@ -220,10 +222,10 @@ test_that("baggr_compare basic cases work with Rubin", {
   expect_is(bgcomp, "list")
   # Compare existing models:
   bgcomp2 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "single")
-  bgcomp3 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "grid")
+  # bgcomp3 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "grid")
   expect_is(bgcomp2, "gg")
-  expect_is(bgcomp3, "list")
-  expect_is(bgcomp3[[1]], "gg")
+  # expect_is(bgcomp3, "list")
+  # expect_is(bgcomp3[[1]], "gg")
 
 })
 
