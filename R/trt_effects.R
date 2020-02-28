@@ -23,15 +23,15 @@ treatment_effect <- function(bg, summary = FALSE,
     message("There is no treatment effect estimated when pooling = 'none'.")
     return(list(tau = as.numeric(NA), sigma_tau = as.numeric(NA)))
   }
-  if(bg$model %in% c("rubin", "mutau", "logit")) {
-    tau <- rstan::extract(bg$fit, pars="tau")[[1]]
+  if(bg$model %in% c("rubin", "mutau", "logit", "full")) {
+    tau <- rstan::extract(bg$fit, pars="mu")[[1]]
     if(bg$model %in% c("rubin", "logit"))
       tau <- c(tau)
     if(bg$model == "mutau")
       tau <- tau[,1,2]
 
     if(bg$pooling == "partial"){
-      sigma_tau <- rstan::extract(bg$fit, pars="sigma_tau")[[1]]
+      sigma_tau <- rstan::extract(bg$fit, pars="tau")[[1]]
       if(bg$model %in% c("rubin", "logit"))
         sigma_tau <- c(sigma_tau)
       if(bg$model == "mutau")
@@ -39,11 +39,6 @@ treatment_effect <- function(bg, summary = FALSE,
     }
     if(bg$pooling == "full")
       sigma_tau <- 0 #same dim as tau, but by convention set to 0
-  } else if(bg$model == "full") {
-    tau <- as.matrix(bg$fit)[,"mutau[2]"]
-    sigma_tau <- as.matrix(bg$fit)[,"sigma_mutau[2,2]"]
-    # in model with correlation, we have Var(), not SD():
-    sigma_tau <- sqrt(sigma_tau)
   } else if(bg$model == "quantiles") {
     # In this case we have N columns = N quantiles
     tau <- as.matrix(bg$fit, "beta_1")
@@ -135,11 +130,17 @@ effect_draw <- function(x, n, transform=NULL) {
 effect_plot <- function(..., transform=NULL) {
   l <- list(...)
 
-  caption <- "Possible treatment effect"
+  caption <- list(
+    title = "Posterior distribution for possible treatment effect",
+    subtitle = ""
+  )
   if(!all(unlist(lapply(l, inherits, "baggr"))))
     stop("Effects plots can only be drawn for baggr class objects")
   if(all(unlist(lapply(l, attr, "ppd"))))
-    caption <- "Possible treatment effect (prior predictive)"
+    caption <- list(
+      title = "Prior distribution for possible treatment effect",
+      subtitle = "No data, only sampling from prior"
+    )
   if(is.null(names(l))){
     if(length(l) > 1)
       message("Automatically naming models; please use named arguments to override.")
@@ -149,7 +150,7 @@ effect_plot <- function(..., transform=NULL) {
   # Check effects and prepare X label
   if(any(unlist(lapply(l, function(x) length(x$effects))) > 1))
     stop("Effect_plot is only possible for models with 1-dimensional treatment effects")
-  effects <- paste("Effect on", unique(unlist(lapply(l, function(x) x$effects))))
+  effects <- paste("Treatment effect on", unique(unlist(lapply(l, function(x) x$effects))))
   if(length(effects) > 1)
     stop("All models must have same effects")
 
@@ -163,7 +164,8 @@ effect_plot <- function(..., transform=NULL) {
   ggplot(df, aes(value, group = model, fill = model)) +
     baggr_theme_get() +
     geom_density(alpha = .25) +
-    ggtitle(caption) +
+    ggtitle(label = caption$title,
+            subtitle = caption$subtitle) +
     xlab(effects) +
     {if(single_model_flag) theme(legend.position = "none")}
 }

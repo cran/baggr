@@ -33,11 +33,8 @@ test_that("Error messages for wrong inputs are in place", {
   expect_warning(baggr(df_mutau, group = "state1000", iter = 50, refresh = 0),
                  "No labels will be added.")
   expect_identical(names(convert_inputs(df_mutau, "mutau")),
-                   c("K", "P", "tau_hat_k", "se_tau_k",
-                     "K_test", "test_tau_hat_k", "test_se_k"))
-
-
-
+                   c("K", "P", "theta_hat_k", "se_theta_k",
+                     "K_test", "test_theta_hat_k", "test_se_theta_k", "Nc", "X", "X_test"))
 })
 
 
@@ -149,5 +146,23 @@ test_that("Extracting treatment/study effects works", {
   expect_identical(names(treatment_effect(bg5_p)), c("tau", "sigma_tau"))
   expect_is(treatment_effect(bg5_p)$tau, "numeric")
   expect_message(treatment_effect(bg5_n), "no treatment effect estimated when")
+})
+
+comp_mt <- baggr_compare(
+  bg5_p, bg5_f
+)
+
+test_that("baggr comparison method works for mu-tau models", {
+
+  expect_is(comp_mt, "baggr_compare")
+  expect_output(print(comp_mt))
+  expect_gt(length(comp_mt), 0)
+
+  expect_is(plot(comp_mt), "plot_list")
+  expect_is(plot(comp_mt)[[1]], "ggplot")
+
+  expect_is(plot(comp_mt, arrange = "grid"), "plot_list")
+  expect_is(plot(comp_mt, arrange = "grid")[[1]], "ggplot")
+
 })
 

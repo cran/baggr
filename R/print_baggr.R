@@ -8,8 +8,9 @@
 #' @param exponent if `TRUE`, results (for means) are converted to exp scale
 #' @param digits Number of significant digits to print.
 #' @param group logical; print group effects? If unspecified,
-#'              they are printed if only
+#'              they are printed only if
 #'              less than 20 groups are present
+#' @param fixed logical: print fixed effects?
 #' @param ... currently unused by this package: further arguments passed
 #'            to or from other methods (\code{print}  requirement)
 #' @importFrom stats sd var median quantile
@@ -20,7 +21,7 @@
 #' @method print baggr
 #'
 
-print.baggr <- function(x, exponent=FALSE, digits = 2, group, ...) {
+print.baggr <- function(x, exponent=FALSE, digits = 2, group, fixed = TRUE, ...) {
   ppd <- attr(x, "ppd")
 
   # Announce model type
@@ -121,8 +122,30 @@ print.baggr <- function(x, exponent=FALSE, digits = 2, group, ...) {
         "Use print.baggr() with group = TRUE to print them.\n")
   }
 
+  if(fixed && length(x$covariates) > 0) {
+    fe <- fixed_effects(x, summary = TRUE)
+
+    if(exponent)
+      fixed_eff_tab <- fixed_effects(x, summary = TRUE, transform=exp)
+    else
+      fixed_eff_tab <- fixed_effects(x, summary = TRUE)
+
+    for(i in 1:dim(fixed_eff_tab)[3]){
+      cat(paste0("Covariate (fixed) effects on ", x$effects[i]))
+      if(exponent){
+        cat(" (converted to exp scale):\n")
+        tab <- cbind(fixed_eff_tab[,c("mean", "lci", "uci"),i])
+      } else{
+        cat(":\n")
+        tab <- cbind(fixed_eff_tab[,c("mean", "sd"),i])
+      }
+      print(tab, digits = digits)
+      cat("\n")
+    }
+  }
+
   if(!is.null(x[["mean_lpd"]]))
-    cat("Cross-validation result: mean lpd =",
+    cat("Cross-validation result: -2 * mean log predictive density =",
         crayon::bold(format(x$mean_lpd)), "\n")
 
   invisible(x)

@@ -4,7 +4,16 @@
 \alias{prepare_prior}
 \title{Prepare prior values for Stan models in baggr}
 \usage{
-prepare_prior(prior, data, stan_data, model, quantiles = c())
+prepare_prior(
+  prior,
+  data,
+  stan_data,
+  model,
+  pooling,
+  covariates,
+  quantiles = c(),
+  silent = FALSE
+)
 }
 \arguments{
 \item{prior}{\code{prior} argument passed from \link{baggr} call}
@@ -16,14 +25,22 @@ this is already pre-obtained through \link{convert_inputs}}
 
 \item{model}{same as in \link{baggr}}
 
+\item{pooling}{same as in \link{baggr}}
+
+\item{covariates}{same as in \link{baggr}}
+
 \item{quantiles}{same as in \link{baggr}}
+
+\item{silent}{same as in \link{baggr}}
 }
 \value{
 A named list with prior values that can be appended to \code{stan_data}
 and passed to a Stan model.
 }
 \description{
-This function first extracts and prepares priors passed by the user.
+This is an internal function called by \link{baggr}. You can use it for debugging
+or to run modified models.
+It extracts and prepares priors passed by the user.
 Then, if any necessary priors are missing, it sets them automatically
 and notifies user about these automatic choices.
 }

@@ -4,12 +4,27 @@
 \alias{baggr}
 \title{Bayesian aggregate treatment effects model}
 \usage{
-baggr(data, model = NULL, pooling = "partial", effect = NULL,
-  prior_hypermean = NULL, prior_hypersd = NULL,
-  prior_hypercor = NULL, prior = NULL, ppd = FALSE,
-  test_data = NULL, quantiles = seq(0.05, 0.95, 0.1),
-  outcome = "outcome", group = "group", treatment = "treatment",
-  warn = TRUE, ...)
+baggr(
+  data,
+  model = NULL,
+  pooling = "partial",
+  effect = NULL,
+  covariates = c(),
+  prior_hypermean = NULL,
+  prior_hypersd = NULL,
+  prior_hypercor = NULL,
+  prior_beta = NULL,
+  prior = NULL,
+  ppd = FALSE,
+  test_data = NULL,
+  quantiles = seq(0.05, 0.95, 0.1),
+  outcome = "outcome",
+  group = "group",
+  treatment = "treatment",
+  silent = FALSE,
+  warn = TRUE,
+  ...
+)
 }
 \arguments{
 \item{data}{data frame with summary or individual level data to meta-analyse}
@@ -29,6 +44,12 @@ quantiles in \code{quantiles} model etc.
 These labels are used in various print and plot outputs.
 Comparable models (e.g. in \link{baggr_compare}) should have same \code{effect}.}
 
+\item{covariates}{Character vector with column names in \code{data}. The corresponding columns are used as
+covariates (fixed effects) in the meta-regression model (in case of aggregate data).
+In the case of individual level data the model does not differentiate between group-level
+variables (same values of the covariate for all rows related to a given group) and
+individual-level covariates.}
+
 \item{prior_hypermean}{prior distribution for hypermean; you can use "plain text" notation like
 \code{prior_hypermean=normal(0,100)} or \code{uniform(-10, 10)}.
 See Details:Priors below for more possible specifications.
@@ -36,12 +57,16 @@ If unspecified, the priors will be derived automatically based on data
 (and printed out in the console).}
 
 \item{prior_hypersd}{prior for hyper-standard deviation, used
-by Rubin and \code{"mutau"`` models; same rules apply as for }_hypermean`;}
+by Rubin and \verb{"mutau"`` models; same rules apply as for }_hypermean`;}
 
 \item{prior_hypercor}{prior for hypercorrelation matrix, used by the \code{"mutau"} model}
 
+\item{prior_beta}{prior for regression coefficients if \code{covariates} are specified; will default to
+experimental normal(0, 10^2) distribution}
+
 \item{prior}{alternative way to specify all priors as a named list with \code{hypermean},
-\code{hypersd}, \code{hypercor}, e.g. \code{prior = list(hypermean = normal(0,10))}}
+\code{hypersd}, \code{hypercor}, \code{beta}, analogous to \code{prior_} arguments above,
+e.g. \code{prior = list(hypermean = normal(0,10), beta = uniform(-50, 50))}}
 
 \item{ppd}{logical; use prior predictive distribution? (\emph{p.p.d.}) Default is no.
 If \code{ppd=TRUE}, Stan model will sample from the prior distributions
@@ -62,6 +87,8 @@ it's necessary for individual-level data, for summarised data
 it will be used as labels for groups when displaying results}
 
 \item{treatment}{character; column name in (individual-level) \code{data} with treatment factor;}
+
+\item{silent}{Whether to silence messages about prior settings and about other automatic behaviour.}
 
 \item{warn}{print an additional warning if Rhat exceeds 1.05}
 
@@ -91,18 +118,23 @@ customised -- see the example below).
 For individual level data three columns are needed: outcome, treatment, group. These
 are identified by using the \code{outcome}, \code{treatment} and \code{group} arguments.
 
-When working with individual-level data,
-many data preparation steps (summarising, standardisation etc.)
-can be done through a helper function \link{prepare_ma}.
-Using it will also automatically format data inputs to be
-work with \code{baggr()}.
+Many data preparation steps can be done through a helper function \link{prepare_ma}.
+It can convert individual to summary-level data, calculate
+odds/risk ratios (with/without corrections) in binary data, standardise variables and more.
+Using it will automatically format data inputs to work with \code{baggr()}.
 
 \strong{Models.} Available models are:
 \itemize{
-\item for the means: \code{"rubin"} model for average treatment effect, \code{"mutau"}
+\item for the \strong{continuous variable} means:
+\code{"rubin"} model for average treatment effect, \code{"mutau"}
 version which takes into account means of control groups, \code{"full"},
 which works with individual-level data
-\item "quantiles" model is also available (see Meager, 2019 in references)
+\item for \strong{continuous variable quantiles}: `"quantiles"`` model
+(see Meager, 2019 in references)
+\item for \strong{binary data}: \code{"logit"} model can be used on individual-level data;
+you can also analyse continuous statistics such as
+log odds ratios and logs risk ratios using the models listed above;
+see \code{vignette("baggr_binary")} for tutorial with examples
 }
 
 If no model is specified, the function tries to infer the appropriate
@@ -110,28 +142,62 @@ model automatically.
 Additionally, the user must specify type of pooling.
 The default is always partial pooling.
 
+\strong{Covariates.}
+Both aggregate and individual-level data can include extra columns, given by \code{covariates} argument
+(specified as a character vector of column names) to be used in regression models.
+We also refer to impact of these covariates as \emph{fixed effects}.
+
+Two types of covariates may be present in your data:
+\itemize{
+\item In \code{"rubin"} and \code{"mutau"} models, covariates that \strong{change according to group unit}.
+In that case, the model accounting
+for the group covariates is a
+\href{https://handbook-5-1.cochrane.org/chapter_9/9_6_4_meta_regression.htm}{meta-regression}
+model. It can be modelled on summary-level data.
+\item In \code{"logit"} and \code{"full"} models, covariates that \strong{change according to individual unit}.
+Then, the model can be called a
+\href{https://stats.stackexchange.com/questions/4700/what-is-the-difference-between-fixed-effect-random-effect-and-mixed-effect-mode/252888}{mixed model}
+. It has to be fitted to individual-level data. Note that the first case can also be
+accounted for by using a mixed model.
+}
+
 \strong{Priors.} It is optional to specify priors yourself,
 as the package will try propose an appropriate
 prior for the input data if you do not pass a \code{prior} argument.
 To set the priors yourself, use \code{prior_} arguments. For specifying many priors at once
 (or re-using between models), a single \code{prior = list(...)} argument can be used instead.
 Appropriate examples are given in \code{vignette("baggr")}.
+
+\strong{Outputs.} By default, some outputs are printed. There is also a
+plot method for \emph{baggr} objects which you can access via \link{baggr_plot} (or simply \code{plot()}).
+Other standard functions for working with \code{baggr} object are
+\itemize{
+\item \link{treatment_effect} for distribution of hyperparameters
+\item \link{group_effects} for distributions of group-specific parameters
+\item \link{fixed_effects} for coefficients in (meta-)regression
+\item \link{effect_draw} and \link{effect_plot} for posterior predictive distributions
+\item \link{baggr_compare} for comparing multiple \code{baggr} models
+\item \link{loocv} for cross-validation
+\item \link{pp_check} for posterior predictive checks
+}
 }
 \examples{
 df_pooled <- data.frame("tau" = c(1, -1, .5, -.5, .7, -.7, 1.3, -1.3),
                         "se" = rep(1, 8),
                         "state" = datasets::state.name[1:8])
 baggr(df_pooled) #baggr automatically detects the input data
-# correct labels, different pooling & passing some options to Stan
+# same model, but with correct labels,
+# different pooling & passing some options to Stan
 baggr(df_pooled, group = "state", pooling = "full", iter = 500)
-#change the priors:
-baggr(df_pooled, prior_hypermean = normal(5,5))
+# model with different (very informative) priors
+baggr(df_pooled, prior_hypersd = normal(0, 2))
 
+\donttest{
 # "mu & tau" model, using a built-in dataset
 # prepare_ma() can summarise individual-level data
-\donttest{
-microcredit_summary_data <- prepare_ma(microcredit_simplified,
-                                       outcome = "consumerdurables")
+ms <- microcredit_simplified
+ms$outcome <- microcredit_simplified$consumerdurables + 1
+microcredit_summary_data <- prepare_ma(ms)
 baggr(microcredit_summary_data, model = "mutau",
       pooling = "partial", prior_hypercor = lkj(1),
       prior_hypersd = normal(0,10),

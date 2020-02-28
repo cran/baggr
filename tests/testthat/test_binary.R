@@ -17,8 +17,9 @@ test_that("Error messages for wrong inputs are in place", {
   expect_error(baggr(df_binary, pooling = "nune"), "Wrong pooling")
 
   # test_that("Converting inputs works correctly") more explicitly
-  expect_identical(names(convert_inputs(df_binary, "logit"))[1:6],
-                   c("K", "N", "P", "y", "treatment", "site"))
+  expect_identical(names(convert_inputs(df_binary, "logit")),
+                   c("K", "N", "P", "y", "treatment", "site", "N_test", "K_test",
+                     "test_y", "test_site", "test_treatment", "Nc", "X", "X_test"))
 })
 
 bg5_n <- expect_warning(baggr(df_binary, "logit", pooling = "none",
@@ -99,6 +100,7 @@ test_that("Plotting works", {
   expect_is(plot(bg5_ppd), "gg")
   expect_is(plot(bg5_n), "gg")
   expect_is(plot(bg5_p, transform = exp), "gg")
+  expect_is(plot(bg5_p, transform = exp, hyper = TRUE), "gg")
   expect_is(plot(bg5_p, hyper = TRUE), "gg")
   expect_is(plot(bg5_p, order = TRUE), "gg")
   expect_is(plot(bg5_f, order = FALSE), "gg")
@@ -159,10 +161,34 @@ test_that("Extracting treatment/study effects works", {
 
 
 
+# covariates ------
+sa <- df_binary
+sa$a <- rnorm(nrow(df_binary))
+sa$b <- rnorm(nrow(df_binary))
+sb <- sa
+sb$b <- NULL
+bg_cov <- baggr(sa, covariates = c("a", "b"), iter = 200, refresh = 0)
+
+test_that("Model with covariates works fine", {
+  expect_is(bg_cov, "baggr")
+  expect_error(baggr(sa, covariates = c("made_up_covariates")), "are not columns")
+  expect_error(baggr(sa, covariates = c("a", "b", "made_up_covariates")))
+  expect_length(bg5_p$covariates, 0)
+  expect_length(bg_cov$covariates, 2)
+  expect_null(bg_cov$mean_lpd)
+
+  # Fixed effects extraction
+  expect_is(fixed_effects(bg_cov), "matrix")
+  expect_is(fixed_effects(bg_cov, transform = exp), "matrix")
+  expect_equal(dim(fixed_effects(bg_cov, summary = TRUE)), c(2,5,1))
+  expect_equal(dim(fixed_effects(bg_cov, summary = FALSE))[2], 2)
+})
+
+
 
 # tests for helper functions -----
 
-test_that("baggr_compare basic cases work with Rubin", {
+test_that("baggr_compare basic cases work with logit models", {
   # If I pass nothing
   expect_error(baggr_compare(), "Must provide baggr models")
   # pooling
@@ -172,32 +198,73 @@ test_that("baggr_compare basic cases work with Rubin", {
   # if I pass list of rubbish
   expect_error(baggr_compare("Fit 1" = cars, "Fit 2" = cars))
   # try to make nonexistant comparison:
-  expect_error(baggr_compare(bg5_p, bg5_n, bg5_f, compare = "sreffects"),
-               "Argument compare")
+  expect_error(baggr_compare(bg5_p, bg5_n, bg5_f, compare = "sreffects"))
   # Run models from baggr_compare:
   bgcomp <- expect_warning(baggr_compare(schools,
                                          iter = 200, refresh = 0))
-  expect_is(bgcomp, "list")
+  expect_is(bgcomp, "baggr_compare")
   # Compare prior vs posterior:
   bgcomp <- expect_warning(baggr_compare(schools, iter = 200,
                                          what = "prior", refresh = 0))
-  expect_is(bgcomp, "list")
+  expect_is(bgcomp, "baggr_compare")
   # Compare existing models:
-  bgcomp2 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "single")
+  bgcomp2 <- plot(baggr_compare(bg5_p, bg5_n, bg5_f), arrange = "single")
   # bgcomp3 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "grid")
-  expect_is(bgcomp2, "gg")
-  # expect_is(bgcomp3, "list")
-  # expect_is(bgcomp3[[1]], "gg")
+  expect_is(bgcomp2, "plot_list")
+  expect_is(bgcomp2[[1]], "gg")
 
 })
 
 test_that("loocv", {
   # Rubbish model
-  expect_error(loocv(schools, model = "mutau"))
+  # expect_error(loocv(schools, model = "mutau"))
   # Can't do pooling none
   expect_error(loocv(schools, pooling = "none"))
 
   loo_model <- expect_warning(loocv(schools, return_models = TRUE, iter = 200, refresh = 0))
   expect_is(loo_model, "baggr_cv")
   capture_output(print(loo_model))
+})
+
+comp_pl <- expect_warning(baggr_compare(
+  df_binary, model = "logit", iter = 200, what = "pooling"
+))
+
+comp_pr <- expect_warning(baggr_compare(
+  df_binary, model = "logit", iter = 200, what = "prior"
+))
+
+comp_existmodels <- baggr_compare(bg5_p, bg5_f)
+
+test_that("baggr comparison method works for Full model", {
+
+  expect_is(comp_pl, "baggr_compare")
+  expect_is(comp_pr, "baggr_compare")
+  expect_is(comp_existmodels, "baggr_compare")
+
+  expect_is(testthat::capture_output(print(comp_pl)), "character")
+  expect_is(testthat::capture_output(print(comp_pr)), "character")
+  expect_is(testthat::capture_output(print(comp_existmodels)), "character")
+
+  expect_gt(length(comp_pl), 0)
+  expect_gt(length(comp_pr), 0)
+  expect_gt(length(comp_existmodels), 0)
+
+  expect_is(plot(comp_pl), "plot_list")
+  expect_is(plot(comp_pl)[[1]], "ggplot")
+
+  expect_is(plot(comp_pl, arrange = "grid"), "plot_list")
+  expect_is(plot(comp_pl, arrange = "grid")[[1]], "ggplot")
+
+  expect_is(plot(comp_pr), "ggplot")
+
+  expect_is(plot(comp_pr, arrange = "grid"), "plot_list")
+  expect_is(plot(comp_pr, arrange = "grid")[[1]], "ggplot")
+
+  expect_is(plot(comp_existmodels), "plot_list")
+  expect_is(plot(comp_existmodels)[[1]], "ggplot")
+
+  expect_is(plot(comp_existmodels, arrange = "grid"), "plot_list")
+  expect_is(plot(comp_existmodels, arrange = "grid")[[1]], "ggplot")
+
 })

@@ -1,24 +1,31 @@
-// parameterization using normal(0,1)
-// for Rubin's model
+functions {
+#include /functions/prior_increment.stan
+}
 
 data {
-  int<lower=0> K; // number of sites
-  // int<lower=0> K_pooled; // number of sites if we take into account pooling
-  real tau_hat_k[K]; // estimated treatment effects
-  real<lower=0> se_tau_k[K]; // s.e. of effect estimates
+  //controls
   int pooling_type; //0 if none, 1 if partial, 2 if full
 
-  //priors (proof of concept)
-  //0 = uniform, 1 = normal
+  //data
+  int<lower=0> K; // number of groups
+  vector[K] theta_hat_k;
+  vector<lower=0>[K] se_theta_k;
+  int<lower=0> Nc; //number of covariates (fixed effects)
+  matrix[K,Nc] X;  //covariate values (design matrix for FE)
+
+  //priors
   int prior_hypermean_fam;
   int prior_hypersd_fam;
-  real prior_hypermean_val[2];
-  real prior_hypersd_val[2];
+  int prior_beta_fam;
+  vector[3] prior_hypermean_val;
+  vector[3] prior_hypersd_val;
+  vector[3] prior_beta_val;
 
-  //cross-validation variables:
-  int<lower=0> K_test; // number of sites
-  real test_tau_hat_k[K_test]; // estimated treatment effects
-  real<lower=0> test_se_k[K_test]; // s.e. of effect estimates
+  //test data (cross-validation)
+  int<lower=0> K_test;
+  vector[K_test] test_theta_hat_k;
+  vector<lower=0>[K_test] test_se_theta_k;
+  matrix[K_test,Nc] X_test;  //covariate values (design matrix for FE)
 }
 
 transformed data {
@@ -28,75 +35,72 @@ transformed data {
   if(pooling_type != 2)
     K_pooled = K;
 }
+
 parameters {
-  real tau[pooling_type != 0? 1: 0];
-  real<lower=0> sigma_tau[pooling_type == 1? 1: 0];
-  real eta[K_pooled];
+  real mu[pooling_type != 0? 1: 0];
+  real<lower=0> tau[pooling_type == 1? 1: 0];
+  vector[K_pooled] eta;
+  vector[Nc] beta;
 }
 transformed parameters {
-  real tau_k[K_pooled];
+  vector[K_pooled] theta_k;
   for(k in 1:K_pooled){
     if(pooling_type == 0)
-      tau_k[k] = eta[k];
+      theta_k[k] = eta[k];
     if(pooling_type == 1)
-      tau_k[k] = tau[1] + eta[k]*sigma_tau[1];
+      theta_k[k] = mu[1] + eta[k]*tau[1];
   }
 }
 model {
+  vector[K] fe_k;
+  if(K > 0){
+    if(Nc == 0)
+      fe_k = rep_vector(0.0, K);
+    else
+      fe_k = X*beta;
+  }
+
   //hypermean priors:
-  if(pooling_type > 0) {
-    if(prior_hypermean_fam == 0)
-      tau ~ uniform(prior_hypermean_val[1], prior_hypermean_val[2]);
-    if(prior_hypermean_fam == 1)
-      tau ~ normal(prior_hypermean_val[1], prior_hypermean_val[2]);
-    if(prior_hypermean_fam == 2)
-      tau ~ cauchy(prior_hypermean_val[1], prior_hypermean_val[2]);
-  } else {
-    if(prior_hypermean_fam == 0)
-      eta ~ uniform(prior_hypermean_val[1], prior_hypermean_val[2]);
-    if(prior_hypermean_fam == 1)
-      eta ~ normal(prior_hypermean_val[1], prior_hypermean_val[2]);
-    if(prior_hypermean_fam == 2)
-      eta ~ cauchy(prior_hypermean_val[1], prior_hypermean_val[2]);
+  if(pooling_type > 0)
+    target += prior_increment_real(prior_hypermean_fam, mu[1], prior_hypermean_val);
+  else{
+    for(k in 1:K)
+      target += prior_increment_real(prior_hypermean_fam, eta[k], prior_hypermean_val);
   }
 
   //hyper-SD priors:
-  if(pooling_type == 1){
-    if(prior_hypersd_fam == 0)
-      target += uniform_lpdf(sigma_tau |
-                             prior_hypersd_val[1], prior_hypersd_val[2]);
-    if(prior_hypersd_fam == 1)
-      target += normal_lpdf(sigma_tau |
-                            prior_hypersd_val[1], prior_hypersd_val[2]);
-    if(prior_hypersd_fam == 2)
-      target += cauchy_lpdf(sigma_tau |
-                            prior_hypersd_val[1], prior_hypersd_val[2]);
-  }
+  if(pooling_type == 1)
+    target += prior_increment_real(prior_hypersd_fam, tau[1], prior_hypersd_val);
 
-  //likelihood
+  //fixed effect coefficients
+  // beta ~ normal(0, 10);
+  target += prior_increment_vec(prior_beta_fam, beta, prior_beta_val);
+
+  //likelihood (block evaluated only if there are data, i.e. K>0)
   if(K > 0) {
-    if(pooling_type == 0){
-      tau_hat_k ~ normal(tau_k, se_tau_k);
-    }
-    if(pooling_type == 1){
-      eta ~ normal(0,1);
-      tau_hat_k ~ normal(tau_k, se_tau_k);
-    }
-    if(pooling_type == 2){
-      tau_hat_k ~ normal(tau[1], se_tau_k);
-    }
+    if(pooling_type == 1)
+        eta ~ normal(0,1);
+    if(pooling_type != 2)
+        theta_hat_k ~ normal(theta_k + fe_k, se_theta_k);
+    if(pooling_type == 2)
+        theta_hat_k ~ normal(rep_vector(mu[1], K) + fe_k, se_theta_k);
   }
 }
 
 generated quantities {
   real logpd[K_test > 0? 1: 0];
+  vector[K_test] fe_k_test;
   if(K_test > 0){
+    if(Nc == 0)
+      fe_k_test = rep_vector(0.0, K_test);
+    else
+      fe_k_test = X_test*beta;
     logpd[1] = 0;
     for(k in 1:K_test){
       if(pooling_type == 1)
-        logpd[1] += normal_lpdf(test_tau_hat_k[k] | tau[1], sqrt(sigma_tau[1]^2 + test_se_k[k]^2));
+        logpd[1] += normal_lpdf(test_theta_hat_k[k] | mu[1] + fe_k_test, sqrt(tau[1]^2 + test_se_theta_k[k]^2));
       if(pooling_type == 2)
-        logpd[1] += normal_lpdf(test_tau_hat_k[k] | tau[1], sqrt(test_se_k[k]^2));
+        logpd[1] += normal_lpdf(test_theta_hat_k[k] | mu[1] + fe_k_test, sqrt(test_se_theta_k[k]^2));
     }
   }
 }

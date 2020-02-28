@@ -36,7 +36,8 @@ test_that("Error messages for wrong inputs are in place", {
 
   # test_that("Converting inputs works correctly") more explicitly
   expect_identical(names(convert_inputs(df_pooled, "rubin")),
-                   c("K", "tau_hat_k", "se_tau_k", "K_test", "test_tau_hat_k", "test_se_k"))
+                   c("K", "theta_hat_k", "se_theta_k", "K_test",
+                     "test_theta_hat_k", "test_se_theta_k", "Nc", "X", "X_test"))
 
   expect_warning(baggr(df_pooled, group = "state1000", iter = 50, refresh = 0),
                  "No labels will be added.")
@@ -173,6 +174,48 @@ test_that("Test data can be used in the Rubin model", {
 })
 
 
+# covariates ------
+sa <- schools
+sa$a <- rnorm(8)
+sa$b <- rnorm(8)
+sb <- sa
+sb$b <- NULL
+bg_cov <- baggr(sa, covariates = c("a", "b"), iter = 200, refresh = 0)
+bg_cov_test <- baggr(sa, covariates = c("a"), test_data = sb, iter = 200, refresh = 0)
+bg_cov_prior1 <- baggr(sa, covariates = c("a", "b"), iter = 200, refresh = 0, prior_beta = normal(0, 3))
+bg_cov_prior2 <- baggr(sa, covariates = c("a", "b"), iter = 200, refresh = 0, prior = list("beta" = uniform(-5, 5)))
+
+test_that("Model with covariates works fine", {
+  expect_is(bg_cov, "baggr")
+  expect_equal(bg_cov$formatted_prior$prior_beta_fam, 1)
+  expect_equal(bg_cov$formatted_prior$prior_beta_val, c(0,10,0))
+  expect_error(baggr(sa, covariates = c("made_up_covariates")))
+  expect_error(baggr(sa, covariates = c("a", "b", "made_up_covariates")))
+  expect_length(bg5_p$covariates, 0)
+  expect_length(bg_cov$covariates, 2)
+  expect_null(bg_cov$mean_lpd)
+
+  # Fixed effects extraction
+  expect_is(fixed_effects(bg_cov), "matrix")
+  expect_is(fixed_effects(bg_cov, transform = exp), "matrix")
+  expect_equal(dim(fixed_effects(bg_cov, summary = TRUE)), c(2,5,1))
+  expect_equal(dim(fixed_effects(bg_cov, summary = FALSE))[2], 2)
+
+  # covariates and test_data
+  expect_error(baggr(sa, covariates = c("a", "b"), test_data = sb), "Cannot bind")
+  expect_error(baggr(sb, model = "rubin", test_data=sa[1:2,], covariates = c("b")), "are not columns")
+  expect_is(bg_cov_test$mean_lpd, "numeric")
+  expect_length(bg_cov_test$covariates, 1)
+
+  # Setting priors for covariates manually works
+  expect_is(bg_cov_prior1, "baggr")
+  expect_is(bg_cov_prior2, "baggr")
+  expect_equal(bg_cov_prior1$formatted_prior$prior_beta_fam, 1)
+  expect_equal(bg_cov_prior1$formatted_prior$prior_beta_val, c(0,3,0))
+  expect_equal(bg_cov_prior2$formatted_prior$prior_beta_fam, 0)
+  expect_equal(bg_cov_prior2$formatted_prior$prior_beta_val, c(-5,5,0))
+})
+
 # test helpers -----
 
 test_that("Extracting treatment/study effects works", {
@@ -211,27 +254,23 @@ test_that("baggr_compare basic cases work with Rubin", {
   expect_error(baggr_compare("Fit 1" = cars, "Fit 2" = cars))
   # try to make nonexistant comparison:
   expect_error(baggr_compare(bg5_p, bg5_n, bg5_f, compare = "sreffects"),
-               "Argument compare")
+               "argument must be set")
   # Run models from baggr_compare:
   bgcomp <- expect_warning(baggr_compare(schools,
                                          iter = 200, refresh = 0))
-  expect_is(bgcomp, "list")
+  expect_is(bgcomp, "baggr_compare")
   # Compare prior vs posterior:
   bgcomp <- expect_warning(baggr_compare(schools, iter = 200,
                                          what = "prior", refresh = 0))
-  expect_is(bgcomp, "list")
+  expect_is(bgcomp, "baggr_compare")
   # Compare existing models:
-  bgcomp2 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "single")
-  # bgcomp3 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "grid")
-  expect_is(bgcomp2, "gg")
-  # expect_is(bgcomp3, "list")
-  # expect_is(bgcomp3[[1]], "gg")
-
+  bgcomp2 <- baggr_compare(bg5_p, bg5_n, bg5_f)
+  expect_is(bgcomp2, "baggr_compare")
 })
 
 test_that("loocv", {
   # Rubbish model
-  expect_error(loocv(schools, model = "mutau"))
+  expect_error(loocv(schools, model = "rubbish"))
   # Can't do pooling none
   expect_error(loocv(schools, pooling = "none"))
 
@@ -271,3 +310,37 @@ test_that("Bangert-Drowns meta-analysis result is close to metafor output", {
   expect_equal(as.numeric(quantile(treatment_effect(bg_bd)$tau, .975)),
                0.31, tolerance = .015)
 })
+
+
+comp_rbpl <- expect_warning(baggr_compare(
+  schools, model = "rubin", iter = 200, what = "pooling"
+))
+
+comp_rbpr <- expect_warning(baggr_compare(
+  schools, model = "rubin", iter = 200, what = "prior"
+))
+
+test_that("baggr comparison method works for Rubin model", {
+
+  expect_is(comp_rbpr, "baggr_compare")
+  expect_is(comp_rbpl, "baggr_compare")
+
+  expect_is(testthat::capture_output(print(comp_rbpl)), "character")
+  expect_is(testthat::capture_output(print(comp_rbpr)), "character")
+
+  expect_gt(length(comp_rbpl), 0)
+  expect_gt(length(comp_rbpr), 0)
+
+  expect_is(plot(comp_rbpl), "plot_list")
+  expect_is(plot(comp_rbpl)[[1]], "ggplot")
+
+  expect_is(plot(comp_rbpr), "ggplot")
+
+  expect_is(plot(comp_rbpl, arrange = "grid"), "plot_list")
+  expect_is(plot(comp_rbpl, arrange = "grid")[[1]], "ggplot")
+
+  expect_is(plot(comp_rbpr, arrange = "grid"), "plot_list")
+  expect_is(plot(comp_rbpr, arrange = "grid")[[1]], "ggplot")
+})
+
+
