@@ -3,14 +3,15 @@ functions {
 }
 
 data {
-  int<lower=0> K;  // number of sites
-  int<lower=0> N;  // total number of observations
-  int<lower=0> Nc; //number of covariates (fixed effects)
-  matrix[N,Nc] X;  //covariate values (design matrix for FE)
+  //controls
   int pooling_type; //0 if none, 1 if partial, 2 if full
-  int<lower=0,upper=1> y[N];
-  int<lower=0,upper=K> site[N];
-  vector<lower=0,upper=1>[N] treatment;
+
+  //data
+  int<lower=0> K; // number of groups
+  vector[K] theta_hat_k;
+  vector<lower=0>[K] se_theta_k;
+  int<lower=0> Nc; //number of covariates (fixed effects)
+  matrix[K,Nc] X;  //covariate values (design matrix for FE)
 
   //priors
   int prior_hypermean_fam;
@@ -20,13 +21,13 @@ data {
   vector[3] prior_hypersd_val;
   vector[3] prior_beta_val;
 
-  //cross-validation variables:
-  int<lower=0> N_test;
+  //test data (cross-validation)
   int<lower=0> K_test;
-  int<lower=0,upper=1> test_y[N_test];
-  int<lower=0, upper=K> test_site[N_test];
-  int<lower=0, upper=1> test_treatment[N_test];
+  vector[K_test] test_theta_hat_k;
+  vector<lower=0>[K_test] test_se_theta_k;
+  matrix[K_test,Nc] X_test;  //covariate values (design matrix for FE)
 }
+
 transformed data {
   int K_pooled; // number of modelled sites if we take pooling into account
   if(pooling_type == 2)
@@ -34,38 +35,40 @@ transformed data {
   if(pooling_type != 2)
     K_pooled = K;
 }
+
 parameters {
-  real baseline[K];
   real mu[pooling_type != 0? 1: 0];
   real<lower=0> tau[pooling_type == 1? 1: 0];
-  real eta[K_pooled];
+  vector[K_pooled] eta;
   vector[Nc] beta;
 }
 transformed parameters {
-  real theta_k[K_pooled];
+  vector[K_pooled] theta_k;
   for(k in 1:K_pooled){
     if(pooling_type == 0)
+      // if there is no pooling then eta's assume role of study means
+      // this is done to avoid defining yet another parameter but rather
+      // recycle something that already exists
       theta_k[k] = eta[k];
     if(pooling_type == 1)
       theta_k[k] = mu[1] + eta[k]*tau[1];
   }
 }
 model {
-  vector[N] fe;
-  if(N > 0){
+  vector[K] fe_k;
+  if(K > 0){
     if(Nc == 0)
-      fe = rep_vector(0.0, N);
+      fe_k = rep_vector(0.0, K);
     else
-      fe = X*beta;
+      fe_k = X*beta;
   }
-
-  baseline ~ normal(0, 10);
 
   //hypermean priors:
   if(pooling_type > 0)
     target += prior_increment_real(prior_hypermean_fam, mu[1], prior_hypermean_val);
   else{
     for(k in 1:K)
+    // eta's are study means in this case
       target += prior_increment_real(prior_hypermean_fam, eta[k], prior_hypermean_val);
   }
 
@@ -74,35 +77,34 @@ model {
     target += prior_increment_real(prior_hypersd_fam, tau[1], prior_hypersd_val);
 
   //fixed effect coefficients
+  // beta ~ normal(0, 10);
   target += prior_increment_vec(prior_beta_fam, beta, prior_beta_val);
 
-  if(pooling_type == 1)
-    eta ~ normal(0,1);
-
-  for(i in 1:N){
-    if(pooling_type < 2)
-      y[i] ~ bernoulli_logit(baseline[site[i]] + theta_k[site[i]] * treatment[i] + fe[i]);
+  //likelihood (block evaluated only if there are data, i.e. K>0)
+  if(K > 0) {
+    if(pooling_type == 1)
+        eta ~ normal(0,1);
+    if(pooling_type != 2)
+        theta_hat_k ~ normal(theta_k + fe_k, se_theta_k);
     if(pooling_type == 2)
-      y[i] ~ bernoulli_logit(baseline[site[i]] + mu[1] * treatment[i] + fe[i]);
+        theta_hat_k ~ normal(rep_vector(mu[1], K) + fe_k, se_theta_k);
   }
 }
 
-/*
-generated_quantities {
+generated quantities {
   real logpd[K_test > 0? 1: 0];
-  // vector[K_test] fe_k_test;
+  vector[K_test] fe_k_test;
   if(K_test > 0){
-    // if(Nc == 0)
-      // fe_k_test = rep_vector(0.0, K_test);
-    // else
-      // fe_k_test = X_test*beta;
+    if(Nc == 0)
+      fe_k_test = rep_vector(0.0, K_test);
+    else
+      fe_k_test = X_test*beta;
     logpd[1] = 0;
     for(k in 1:K_test){
       if(pooling_type == 1)
-        logpd[1] += bernoulli_logit_lpmf(test_theta_hat_k[k] | baseline[site[i]] + mu[1] * treatment[i] + fe[i]);
-      // if(pooling_type == 2)
-        // logpd[1] += bernoulli_logit_lpmf(test_theta_hat_k[k] | baseline[site[i]] + mu[1] * treatment[i] + fe[i]);
+        logpd[1] += normal_lpdf(test_theta_hat_k[k] | mu[1] + fe_k_test, sqrt(tau[1]^2 + test_se_theta_k[k]^2));
+      if(pooling_type == 2)
+        logpd[1] += normal_lpdf(test_theta_hat_k[k] | mu[1] + fe_k_test, sqrt(test_se_theta_k[k]^2));
     }
   }
 }
-*/

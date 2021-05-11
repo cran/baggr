@@ -12,7 +12,7 @@ baggr_schools <- baggr(schools, model = "rubin", pooling = "partial")
 # my_baggr_plot <- baggr_compare(schools)
 
 ## -----------------------------------------------------------------------------
-prepare_ma(microcredit_simplified, outcome = "consumerdurables")
+prepare_ma(microcredit_simplified, outcome = "consumption")
 
 ## -----------------------------------------------------------------------------
 schools
@@ -45,6 +45,9 @@ plot(baggr_schools, order = FALSE)
 ## ----fig.width = 4------------------------------------------------------------
 effect_plot(baggr_schools)
 
+## -----------------------------------------------------------------------------
+effect_draw(baggr_schools, n = 1)
+
 ## ----echo=TRUE, eval=FALSE----------------------------------------------------
 #  my_baggr_comparison <- baggr_compare(schools)
 
@@ -52,7 +55,7 @@ effect_plot(baggr_schools)
 my_baggr_comparison <- baggr_compare(schools)
 
 ## ----fig.width=5, fig.height=4, echo = TRUE-----------------------------------
-plot(my_baggr_comparison)[[1]] + 
+plot(my_baggr_comparison) + 
   ggtitle("8 schools: model comparison")
 
 ## ---- eval=F, echo=T----------------------------------------------------------
@@ -73,7 +76,9 @@ forest_plot(baggr_schools)
 forest_plot(baggr_schools, show = "both")
 
 ## ----loocv, echo = T, results = 'hide', warning = F, message = F--------------
-loocv_res <- loocv(schools, return_models = FALSE, "rubin", pooling = "partial")
+loocv_res <- loocv(schools, return_models = FALSE, 
+                   iter = 1000, #just to make it a bit faster -- don't try it at home!
+                   model = "rubin", pooling = "partial")
 
 ## -----------------------------------------------------------------------------
 loocv_res
@@ -93,13 +98,10 @@ fit1$mean_lpd
 fit2$mean_lpd
 
 ## ----results = 'hide'---------------------------------------------------------
-cv_1 <- loocv(data = schools, 
-              model = "rubin", 
-              pooling = "partial")
-cv_2 <- loocv(data = schools, 
-              model = "rubin", 
-              pooling = "full")
+loocv_full <- loocv(data = schools, 
+                    model = "rubin", 
+                    pooling = "full")
 
 ## -----------------------------------------------------------------------------
-loo_compare(cv_1, cv_2)
+loo_compare(loocv_res, loocv_full)
 

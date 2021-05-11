@@ -51,9 +51,10 @@
 #' Lewandowski, Daniel, Dorota Kurowicka, and Harry Joe.
 #' "Generating Random Correlation Matrices Based on Vines and Extended Onion Method."
 #' _Journal of Multivariate Analysis_ 100, no. 9 (October 1, 2009): 1989-2001.
-#' https://doi.org/10.1016/j.jmva.2009.04.008.
 #'
 #' @examples
+#' # (these are not the recommended priors -- for syntax illustration only)
+#'
 #' # change the priors for 8 schools:
 #' baggr(schools, model = "rubin", pooling = "partial",
 #'       prior_hypermean = normal(5,5),
@@ -63,6 +64,7 @@
 #' # passing priors as a list
 #' custom_priors <- list(hypercor = lkj(1), hypersd = normal(0,10),
 #'                       hypermean = multinormal(c(0,0),matrix(c(10,3,3,10),2,2)))
+#' microcredit_summary_data <- prepare_ma(microcredit, outcome = "consumption")
 #' baggr(microcredit_summary_data, model = "mutau",
 #'       pooling = "partial", prior = custom_priors)
 #' }
@@ -82,6 +84,21 @@ prior_dist_fam <- c("uniform" = 0,
                     "multinormal" = 3,
                     "lkj" = 4)
 
+#' Output a distribution as a string
+#'
+#' Used for printing nicely formatted outputs when reporting results etc.
+#' @param dist distribution name, one of [priors]
+#' @return Character string like `normal(0, 10^2)`.
+print_dist <- function(dist){
+  if(dist$dist == "multinormal")
+    return("multinormal(...)")
+
+  paste0(dist$dist, "(",
+         paste0(format(dist$values, digits = 2, trim = TRUE), collapse = ", "),
+         ifelse(dist$dist == "normal", "^2", ""), ")")
+}
+
+
 #' Add prior values to Stan input for baggr
 #'
 #' @param target list object (Stan input) to which prior will be added
@@ -93,6 +110,7 @@ prior_dist_fam <- c("uniform" = 0,
 set_prior_val <- function(target, name, prior, p = 1) {
   if(is.null(prior$dist))
     stop("Wrong prior specification")
+
   if(!(prior$dist %in% names(prior_dist_fam)))
     stop(paste("Prior family must be one of: ",
                paste(names(prior_dist_fam), collapse = ", ")))

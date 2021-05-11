@@ -13,14 +13,21 @@
 #'
 #' @details
 #'
-#' The values returned by `loocv()` can be used to understand how any
-#' one group affects the overall result, as well as how well the model
-#' predicts the omitted group.
+#' The values returned by `loocv()` can be used to understand how excluding
+#' any one group affects the overall result, as well as how well the model
+#' predicts the omitted group. LOO-CV approaches are a good general practice
+#' for comparing Bayesian models, not only in meta-analysis.
 #'
-#' This function automatically runs K baggr models, leaving out one group at a time,
-#' and then calculates expected log predictive density (ELPD) for
-#' that group (see Gelman et al 2013). The main output is the cross-validation
-#' information criterion, or -2 times the ELPD averaged over 'K' models.
+#' This function automatically runs _K_ baggr models, where _K_ is number of groups (e.g. studies),
+#' leaving out one group at a time. For each run, it calculates
+#' _expected log predictive density_ (ELPD) for that group (see Gelman et al 2013).
+#' (In the logistic model, where the proportion in control group is unknown, each of
+#' the groups is divided into data for controls, which is kept for estimation, and data for
+#' treated units, which is not used for estimation but only for calculating predictive density.
+#' This is akin to fixing the baseline risk and only trying to infer the odds ratio.)
+#'
+#' The main output is the cross-validation
+#' information criterion, or -2 times the ELPD averaged over _K_ models.
 #' This is related to, and often approximated by, the Watanabe-Akaike
 #' Information Criterion. A value closer to zero (i.e. a smaller number in magnitude)
 #' means a better fit. For more information on cross-validation see
@@ -33,7 +40,7 @@
 #' To see sampling progress, please set e.g. `loocv(data, refresh = 500)`.
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' # even simple examples may take a while
 #' cv <- loocv(schools, pooling = "partial")
 #' print(cv)      # returns the lpd value
@@ -46,7 +53,7 @@
 #' @references
 #' Gelman, Andrew, Jessica Hwang, and Aki Vehtari.
 #' “Understanding Predictive Information Criteria for Bayesian Models.”
-#' Statistics and Computing 24, no. 6 (November 2014): 997–1016. https://doi.org/10.1007/s11222-013-9416-2.
+#' Statistics and Computing 24, no. 6 (November 2014): 997–1016.
 #' @export
 
 loocv <- function(data, return_models = FALSE, ...) {
@@ -70,12 +77,12 @@ loocv <- function(data, return_models = FALSE, ...) {
   # Model with all of data:
   full_fit <- try(baggr(data, refresh = 0, ...))
   if(class(full_fit) == "try-error")
-    stop("Inference failed for the model with all data")
+    stop("Inference failed for the model with all data, please try fitting outside of loocv()")
 
   # Prepare the arguments
   args[["data"]] <- data
   args[["model"]] <- full_fit$model
-  # if(full_fit$model == "full")
+  # if(full_fit$model == "rubin_full")
     # stop("LOO CV is not implemented for full data models yet.")
   if(!("prior" %in% names(args))) {
     message("(Prior distributions taken from the model with all data. See $prior.)")
@@ -83,13 +90,15 @@ loocv <- function(data, return_models = FALSE, ...) {
   }
 
   # Determine number and names of groups
-  if(args[["model"]] %in% c("full", "quantiles")) {
+  if(args[["model"]] %in% c("rubin_full", "quantiles", "logit")) {
+    #For individual-level data models we need to calculate N groups
     if(!is.null(args[["group"]]))
       group_col <- args[["group"]]
     else
       group_col <- "group"
     group_names <- unique(data[[group_col]])
     K <- length(group_names)
+
   } else {
     K <- nrow(data)
   }
@@ -104,13 +113,20 @@ loocv <- function(data, return_models = FALSE, ...) {
   cat("\n")
   pb <- utils::txtProgressBar(style = 3)
   kfits <- lapply(as.list(1:K), function(i) {
-    if(args[["model"]] %in% c("full", "quantiles")) {
+
+    # Partitioning data into the fit data and LOO
+    if(args[["model"]] %in% c("quantiles")) {
       args$data      <- data[data[[group_col]] != group_names[i], ]
       args$test_data <- data[data[[group_col]] == group_names[i], ]
+    } else if(args[["model"]] %in% c("rubin_full", "logit")) {
+      trt_column <- ifelse(is.null(args[["treatment"]]), "treatment", args[["treatment"]])
+      args$data      <- data[data[[group_col]] != group_names[i] | data[[trt_column]] == 0, ]
+      args$test_data <- data[data[[group_col]] == group_names[i] & data[[trt_column]] == 1, ]
     } else {
       args$data      <- data[-i,]
       args$test_data <- data[i,]
     }
+    # Done partitioning data.
 
     utils::setTxtProgressBar(pb, (i-1)/K)
 
@@ -173,8 +189,8 @@ is.baggr_cv <- function(x) {
 #' @param ... Additional objects of class "baggr_cv"
 #' @export loo_compare
 #' @examples
-#' \donttest{
-#' # 2 models with more/less informative priors
+#' \dontrun{
+#' # 2 models with more/less informative priors -- this will take a while to run
 #' cv_1 <- loocv(schools, model = "rubin", pooling = "partial")
 #' cv_2 <- loocv(schools, model = "rubin", pooling = "partial",
 #'               prior_hypermean = normal(0, 5), prior_hypersd = cauchy(0,4))

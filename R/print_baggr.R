@@ -49,28 +49,42 @@ print.baggr <- function(x, exponent=FALSE, digits = 2, group, fixed = TRUE, ...)
       te <- treatment_effect(x, transform = base::exp)
     else
       te <- treatment_effect(x)
+
+    if(exponent)
+      cat("Exponent of hypermean (exp(tau))")
+    else
+      cat("Hypermean (tau)")
+
     #trim=T avoids whitespace in place of minus sign
-    if(x$model != "quantiles"){
-      tau       <- format(mint(te[[1]]), digits = digits, trim = T)
-      sigma_tau <- format(mint(te[[2]]), digits = digits, trim = T)
-      if(exponent)
-        cat("Exponent of hypermean (exp(tau))")
-      else
-        cat("Hypermean (tau)")
+    if(length(x$effects) == 1){
+      tau       <- format(mint(te[[1]]), digits = digits, trim = TRUE)
+      sigma_tau <- format(mint(te[[2]]), digits = digits, trim = TRUE)
+
       cat(" = ", tau[2], "with 95% interval", tau[1], "to", tau[3], "\n")
       if(x$pooling == "partial" && !exponent){
         cat("Hyper-SD (sigma_tau) =", sigma_tau[2], "with 95% interval",
             sigma_tau[1], "to", sigma_tau[3], "\n")
-        tot_pool <- format(heterogeneity(x)[,,1], digits = digits, trim = T)
-        cat("Total pooling (1 - I^2) =", tot_pool[2], "with 95% interval",
-            tot_pool[1], "to", tot_pool[3], "\n")
+        tot_pool <- format(heterogeneity(x)[,,1], digits = digits, trim = TRUE)
+        if(!ppd)
+          cat("Total pooling (1 - I^2) =", tot_pool[2], "with 95% interval",
+              tot_pool[1], "to", tot_pool[3], "\n")
       }
-    } else { #quantiles
+    } else {
       tau <- mint(te[[1]])
       sigma_tau <- mint(te[[2]])
-      rownames(tau) <- rownames(sigma_tau) <- paste0(100*x$quantiles, "% quantile")
+
+      if(x$model == "quantiles"){
+        rownames(tau) <- paste0(100*x$quantiles, "% quantile")
+        if(!exponent)
+          rownames(sigma_tau) <- paste0(100*x$quantiles, "% quantile")
+      } else if(x$model == "sslab") {
+        rownames(tau) <- x$effects
+        if(!exponent)
+          rownames(sigma_tau) <- x$effects
+      }
+
       print(tau, digits = digits)
-      if(x$pooling == "partial"){
+      if(!exponent && x$pooling == "partial"){
         cat(crayon::bold("\nSD of treatement effects:"))
         print(sigma_tau, digits = digits)
       }

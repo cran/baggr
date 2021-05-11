@@ -32,7 +32,7 @@
 #' models on the data from 7 randomized controlled trials of expanding access to microcredit.
 #'
 #' The columns include the group indicator which gives the name of the lead author on
-#' each of the respective studies, the value of the household consumer durables
+#' each of the respective studies, the value of the household consumption
 #' spending standardised to USD PPP in 2009 dollars per two weeks (these are flow variables),
 #' and finally a treatment assignment status indicator.
 #'
@@ -43,7 +43,7 @@
 #' see Meager (2019) or consult the associated code repository:
 #' [link](https://bitbucket.org/rmeager/aggregate-average-impacts-microcredit/src/master/)
 #'
-#' This dataset includes only complete cases and only the consumer durables outcome variable.
+#' This dataset includes only complete cases and only the consumption outcome variable.
 #'
 #' @format A data frame with 14224 rows, 7 study identifiers and 1 outcome
 #' @references Meager, Rachael (2019) Understanding the average impact of microcredit expansions:
@@ -64,3 +64,23 @@
 #' Bayesian Data Analysis. Taylor & Francis, 1995.
 "schools"
 
+
+#' Chickens: impact of electromagnetic field on calcium ion efflux in chicken brains
+#'
+#' An experiment conducted by Blackman et al. (1988) and documented in the following
+#' [GitHub repository](https://github.com/VMatthijs/Slamming-the-sham) by Vakar
+#' and Gelman. The dataset consists of a large number of experiments (`tau`, `se.tau`)
+#' repeated at varying wave frequencies. Sham experiments (`mu`, `se.mu`) are also
+#' included, allowing us to compare performance of models with and without
+#' control measurements.
+#'
+#' @references Blackman, C. F., S. G. Benane, D. J. Elliott, D. E. House, and
+#' M. M. Pollock.
+#' “Influence of Electromagnetic Fields on the Efflux of Calcium Ions from Brain
+#' Tissue in Vitro: A Three-Model Analysis Consistent with the Frequency
+#' Response up to 510 Hz.” Bioelectromagnetics 9, no. 3 (1988): 215–27.
+"chicks"
+
+#' Spike & slab example dataset
+#'
+"data_spike"

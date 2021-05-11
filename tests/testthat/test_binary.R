@@ -23,16 +23,16 @@ test_that("Error messages for wrong inputs are in place", {
 })
 
 bg5_n <- expect_warning(baggr(df_binary, "logit", pooling = "none",
-                              iter = 200, chains = 2, refresh = 0,
+                              iter = 150, chains = 2, refresh = 0,
                               show_messages = F))
 bg5_p <- expect_warning(baggr(df_binary, "logit", pooling = "partial",
-                              iter = 200, chains = 2, refresh = 0,
+                              iter = 150, chains = 2, refresh = 0,
                               show_messages = F))
 bg5_f <- expect_warning(baggr(df_binary, "logit", pooling = "full",
-                              iter = 200, chains = 2, refresh = 0,
+                              iter = 150, chains = 2, refresh = 0,
                               show_messages = F))
-bg5_ppd <- expect_warning(baggr(df_binary, "logit", ppd = T,
-                                iter = 200, chains = 2, refresh = 0,
+bg5_ppd <- expect_warning(baggr(df_binary, "logit", ppd = TRUE,
+                                iter = 150, chains = 2, refresh = 0,
                                 show_messages = F))
 
 test_that("Different pooling methods work for Rubin model", {
@@ -42,7 +42,7 @@ test_that("Different pooling methods work for Rubin model", {
 })
 
 test_that("Extra args to Stan passed via ... work well", {
-  expect_equal(nrow(as.matrix(bg5_p$fit)), 200) #right dimension means right iter
+  expect_equal(nrow(as.matrix(bg5_p$fit)), 150) #right dimension means right iter
   expect_error(baggr(df_binary, rubbish = 41))
 })
 
@@ -77,7 +77,7 @@ test_that("Pooling metrics", {
 
   # since all SEs are the same, pooling should be the same for all sites
   # capture_output(print(pp))
-  # expect_equal(pp[2,,1], .75, tolerance = .1) #YUGE tolerance as we only do 200 iter
+  # expect_equal(pp[2,,1], .75, tolerance = .1) #YUGE tolerance as we only do 150 iter
   # expect_equal(length(unique(pp[2,,1])), 1)
   # expect_equal(as.numeric(pp[2,1,1]), .75, tolerance = .1)
 })
@@ -86,17 +86,17 @@ test_that("Pooling metrics", {
 test_that("Calculation of effects works", {
   expect_is(group_effects(bg5_p), "array")
   expect_is(treatment_effect(bg5_p), "list")
-  expect_length(treatment_effect(bg5_p, summary = T)$tau, 5)
-  expect_length(treatment_effect(bg5_p, summary = T)$sigma_tau, 5)
+  expect_length(treatment_effect(bg5_p, summary = TRUE)$tau, 5)
+  expect_length(treatment_effect(bg5_p, summary = TRUE)$sigma_tau, 5)
 
-  expect_identical(dim(group_effects(bg5_n)), as.integer(c(200, 5 , 1)))
-  expect_identical(dim(group_effects(bg5_p)), as.integer(c(200, 5 , 1)))
-  expect_identical(dim(group_effects(bg5_f)), as.integer(c(200, 5 , 1)))
+  expect_identical(dim(group_effects(bg5_n)), as.integer(c(150, 5 , 1)))
+  expect_identical(dim(group_effects(bg5_p)), as.integer(c(150, 5 , 1)))
+  expect_identical(dim(group_effects(bg5_f)), as.integer(c(150, 5 , 1)))
   expect_identical(names(treatment_effect(bg5_p)), c("tau", "sigma_tau"))
 })
 
 
-test_that("Plotting works", {
+test_that("Plotting and printing works", {
   expect_is(plot(bg5_ppd), "gg")
   expect_is(plot(bg5_n), "gg")
   expect_is(plot(bg5_p, transform = exp), "gg")
@@ -110,9 +110,7 @@ test_that("Plotting works", {
   expect_is(forest_plot(bg5_f, graph.pos = 1), "vpPath")
   # but we can crash it easily if
   expect_error(plot(bg5_n, style = "rubbish"), "argument must be one of")
-})
 
-test_that("printing works", {
   capture_output(print(bg5_n))
   capture_output(print(bg5_p))
   capture_output(print(bg5_f))
@@ -146,9 +144,9 @@ test_that("Extracting treatment/study effects works", {
   # Drawing values of tau:
   expect_error(effect_draw(cars))
   expect_is(effect_draw(bg5_p), "numeric")
-  expect_length(effect_draw(bg5_p), 200)
+  expect_is(effect_draw(bg5_p, transform = exp), "numeric")
+  expect_length(effect_draw(bg5_p), 150)
   expect_length(effect_draw(bg5_p,7), 7)
-  expect_identical(effect_draw(bg5_n), NA)
 
   # Plotting tau:
   expect_is(effect_plot(bg5_p), "gg")
@@ -167,9 +165,12 @@ sa$a <- rnorm(nrow(df_binary))
 sa$b <- rnorm(nrow(df_binary))
 sb <- sa
 sb$b <- NULL
-bg_cov <- baggr(sa, covariates = c("a", "b"), iter = 200, refresh = 0)
+
 
 test_that("Model with covariates works fine", {
+  bg_cov <- expect_warning(
+    baggr(sa, covariates = c("a", "b"), iter = 150, chains = 1, refresh = 0))
+
   expect_is(bg_cov, "baggr")
   expect_error(baggr(sa, covariates = c("made_up_covariates")), "are not columns")
   expect_error(baggr(sa, covariates = c("a", "b", "made_up_covariates")))
@@ -189,49 +190,33 @@ test_that("Model with covariates works fine", {
 # tests for helper functions -----
 
 test_that("baggr_compare basic cases work with logit models", {
-  # If I pass nothing
-  expect_error(baggr_compare(), "Must provide baggr models")
-  # pooling
-  expect_error(baggr_compare(schools, pooling = "full"))
-  # if I pass rubbish
-  expect_error(baggr_compare(cars))
-  # if I pass list of rubbish
-  expect_error(baggr_compare("Fit 1" = cars, "Fit 2" = cars))
   # try to make nonexistant comparison:
   expect_error(baggr_compare(bg5_p, bg5_n, bg5_f, compare = "sreffects"))
-  # Run models from baggr_compare:
-  bgcomp <- expect_warning(baggr_compare(schools,
-                                         iter = 200, refresh = 0))
-  expect_is(bgcomp, "baggr_compare")
-  # Compare prior vs posterior:
-  bgcomp <- expect_warning(baggr_compare(schools, iter = 200,
-                                         what = "prior", refresh = 0))
-  expect_is(bgcomp, "baggr_compare")
   # Compare existing models:
-  bgcomp2 <- plot(baggr_compare(bg5_p, bg5_n, bg5_f), arrange = "single")
-  # bgcomp3 <- baggr_compare(bg5_p, bg5_n, bg5_f, arrange = "grid")
-  expect_is(bgcomp2, "plot_list")
-  expect_is(bgcomp2[[1]], "gg")
-
+  expect_is(plot(baggr_compare(bg5_p, bg5_n, bg5_f)), "gg")
 })
 
 test_that("loocv", {
   # Rubbish model
   # expect_error(loocv(schools, model = "mutau"))
   # Can't do pooling none
-  expect_error(loocv(schools, pooling = "none"))
+  expect_error(loocv(df_binary, pooling = "none"))
 
-  loo_model <- expect_warning(loocv(schools, return_models = TRUE, iter = 200, refresh = 0))
+  skip_on_cran()
+  skip_on_travis()
+
+  loo_model <- expect_warning(loocv(df_binary, model = "logit",
+                                    return_models = TRUE, iter = 150, chains = 1, refresh = 0))
   expect_is(loo_model, "baggr_cv")
   capture_output(print(loo_model))
 })
 
 comp_pl <- expect_warning(baggr_compare(
-  df_binary, model = "logit", iter = 200, what = "pooling"
+  df_binary, model = "logit", iter = 150, what = "pooling"
 ))
 
 comp_pr <- expect_warning(baggr_compare(
-  df_binary, model = "logit", iter = 200, what = "prior"
+  df_binary, model = "logit", iter = 150, what = "prior"
 ))
 
 comp_existmodels <- baggr_compare(bg5_p, bg5_f)
@@ -250,21 +235,42 @@ test_that("baggr comparison method works for Full model", {
   expect_gt(length(comp_pr), 0)
   expect_gt(length(comp_existmodels), 0)
 
-  expect_is(plot(comp_pl), "plot_list")
-  expect_is(plot(comp_pl)[[1]], "ggplot")
+  expect_is(plot(comp_pl), "gg")
+  expect_is(plot(comp_pl, grid_models = TRUE), "gtable")
+  expect_is(plot(comp_pr), "gg")
+  expect_is(plot(comp_pr, grid_models = TRUE), "gtable")
+  expect_is(plot(comp_existmodels), "gg")
+  expect_is(plot(comp_existmodels, grid_models = TRUE), "gtable")
 
-  expect_is(plot(comp_pl, arrange = "grid"), "plot_list")
-  expect_is(plot(comp_pl, arrange = "grid")[[1]], "ggplot")
+})
 
-  expect_is(plot(comp_pr), "ggplot")
 
-  expect_is(plot(comp_pr, arrange = "grid"), "plot_list")
-  expect_is(plot(comp_pr, arrange = "grid")[[1]], "ggplot")
 
-  expect_is(plot(comp_existmodels), "plot_list")
-  expect_is(plot(comp_existmodels)[[1]], "ggplot")
+# Setting control pooling, control priors -----
 
-  expect_is(plot(comp_existmodels, arrange = "grid"), "plot_list")
-  expect_is(plot(comp_existmodels, arrange = "grid")[[1]], "ggplot")
+test_that("Prior specifications for baselines work", {
 
+  skip_on_cran()
+
+  bg1 <- expect_warning(baggr(df_binary, "logit", pooling = "none",
+                              pooling_control = "partial",
+                              iter = 150, chains = 2, refresh = 0,
+                              show_messages = F))
+  bg2 <- expect_warning(baggr(df_binary, "logit", pooling = "none",
+                              pooling_control = "partial", prior_control = normal(0, 5),
+                              iter = 150, chains = 2, refresh = 0,
+                              show_messages = F))
+  bg3 <- expect_warning(baggr(df_binary, "logit", pooling = "none",
+                              pooling_control = "partial", prior_control = normal(0, 5), prior_control_sd = uniform(0, 1),
+                              iter = 150, chains = 2, refresh = 0,
+                              show_messages = F))
+
+  expect_is(bg1, "baggr")
+  expect_is(bg2, "baggr")
+  expect_is(bg3, "baggr")
+
+  expect_error(baggr(df_binary, "logit", pooling = "none",
+                              pooling_control = "partial", prior_control = multinormal(c(0,0), diag(2)),
+                              iter = 150, chains = 2, refresh = 0,
+                              show_messages = F))
 })
