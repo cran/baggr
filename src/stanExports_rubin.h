@@ -37,7 +37,7 @@ stan::io::program_reader prog_reader__() {
     reader.add_event(1, 0, "start", "/functions/prior_increment.stan");
     reader.add_event(26, 25, "end", "/functions/prior_increment.stan");
     reader.add_event(26, 2, "restart", "model_rubin");
-    reader.add_event(136, 110, "end", "model_rubin");
+    reader.add_event(137, 111, "end", "model_rubin");
     return reader;
 }
 template <typename T1__, typename T2__>
@@ -604,22 +604,25 @@ public:
                 lp_accum__.add(prior_increment_real(prior_hypersd_fam, get_base1(tau, 1, "tau", 1), prior_hypersd_val, pstream__));
             }
             current_statement_begin__ = 105;
-            lp_accum__.add(prior_increment_vec(prior_beta_fam, beta, prior_beta_val, pstream__));
-            current_statement_begin__ = 108;
+            if (as_bool(logical_gt(Nc, 0))) {
+                current_statement_begin__ = 106;
+                lp_accum__.add(prior_increment_vec(prior_beta_fam, beta, prior_beta_val, pstream__));
+            }
+            current_statement_begin__ = 109;
             if (as_bool(logical_gt(K, 0))) {
-                current_statement_begin__ = 109;
+                current_statement_begin__ = 110;
                 if (as_bool(logical_eq(pooling_type, 1))) {
-                    current_statement_begin__ = 110;
+                    current_statement_begin__ = 111;
                     lp_accum__.add(normal_log<propto__>(eta, 0, 1));
                 }
-                current_statement_begin__ = 111;
+                current_statement_begin__ = 112;
                 if (as_bool(logical_neq(pooling_type, 2))) {
-                    current_statement_begin__ = 112;
+                    current_statement_begin__ = 113;
                     lp_accum__.add(normal_log<propto__>(theta_hat_k, add(theta_k, fe_k), se_theta_k));
                 }
-                current_statement_begin__ = 113;
+                current_statement_begin__ = 114;
                 if (as_bool(logical_eq(pooling_type, 2))) {
-                    current_statement_begin__ = 114;
+                    current_statement_begin__ = 115;
                     lp_accum__.add(normal_log<propto__>(theta_hat_k, add(rep_vector(get_base1(mu, 1, "mu", 1), K), fe_k), se_theta_k));
                 }
             }
@@ -767,45 +770,45 @@ public:
             }
             if (!include_gqs__) return;
             // declare and define generated quantities
-            current_statement_begin__ = 119;
+            current_statement_begin__ = 120;
             validate_non_negative_index("logpd", "(logical_gt(K_test, 0) ? 1 : 0 )", (logical_gt(K_test, 0) ? 1 : 0 ));
             std::vector<double> logpd((logical_gt(K_test, 0) ? 1 : 0 ), double(0));
             stan::math::initialize(logpd, DUMMY_VAR__);
             stan::math::fill(logpd, DUMMY_VAR__);
-            current_statement_begin__ = 120;
+            current_statement_begin__ = 121;
             validate_non_negative_index("fe_k_test", "K_test", K_test);
             Eigen::Matrix<double, Eigen::Dynamic, 1> fe_k_test(K_test);
             stan::math::initialize(fe_k_test, DUMMY_VAR__);
             stan::math::fill(fe_k_test, DUMMY_VAR__);
             // generated quantities statements
-            current_statement_begin__ = 121;
+            current_statement_begin__ = 122;
             if (as_bool(logical_gt(K_test, 0))) {
-                current_statement_begin__ = 122;
+                current_statement_begin__ = 123;
                 if (as_bool(logical_eq(Nc, 0))) {
-                    current_statement_begin__ = 123;
+                    current_statement_begin__ = 124;
                     stan::math::assign(fe_k_test, rep_vector(0.0, K_test));
                 } else {
-                    current_statement_begin__ = 125;
+                    current_statement_begin__ = 126;
                     stan::math::assign(fe_k_test, multiply(X_test, beta));
                 }
-                current_statement_begin__ = 126;
+                current_statement_begin__ = 127;
                 stan::model::assign(logpd, 
                             stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                             0, 
                             "assigning variable logpd");
-                current_statement_begin__ = 127;
+                current_statement_begin__ = 128;
                 for (int k = 1; k <= K_test; ++k) {
-                    current_statement_begin__ = 128;
+                    current_statement_begin__ = 129;
                     if (as_bool(logical_eq(pooling_type, 1))) {
-                        current_statement_begin__ = 129;
+                        current_statement_begin__ = 130;
                         stan::model::assign(logpd, 
                                     stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                     (stan::model::rvalue(logpd, stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), "logpd") + normal_log(get_base1(test_theta_hat_k, k, "test_theta_hat_k", 1), add(get_base1(mu, 1, "mu", 1), fe_k_test), stan::math::sqrt((pow(get_base1(tau, 1, "tau", 1), 2) + pow(get_base1(test_se_theta_k, k, "test_se_theta_k", 1), 2))))), 
                                     "assigning variable logpd");
                     }
-                    current_statement_begin__ = 130;
+                    current_statement_begin__ = 131;
                     if (as_bool(logical_eq(pooling_type, 2))) {
-                        current_statement_begin__ = 131;
+                        current_statement_begin__ = 132;
                         stan::model::assign(logpd, 
                                     stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                     (stan::model::rvalue(logpd, stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), "logpd") + normal_log(get_base1(test_theta_hat_k, k, "test_theta_hat_k", 1), add(get_base1(mu, 1, "mu", 1), fe_k_test), stan::math::sqrt(pow(get_base1(test_se_theta_k, k, "test_se_theta_k", 1), 2)))), 
@@ -814,12 +817,12 @@ public:
                 }
             }
             // validate, write generated quantities
-            current_statement_begin__ = 119;
+            current_statement_begin__ = 120;
             size_t logpd_k_0_max__ = (logical_gt(K_test, 0) ? 1 : 0 );
             for (size_t k_0__ = 0; k_0__ < logpd_k_0_max__; ++k_0__) {
                 vars__.push_back(logpd[k_0__]);
             }
-            current_statement_begin__ = 120;
+            current_statement_begin__ = 121;
             size_t fe_k_test_j_1_max__ = K_test;
             for (size_t j_1__ = 0; j_1__ < fe_k_test_j_1_max__; ++j_1__) {
                 vars__.push_back(fe_k_test(j_1__));

@@ -37,7 +37,7 @@ stan::io::program_reader prog_reader__() {
     reader.add_event(1, 0, "start", "/functions/prior_increment.stan");
     reader.add_event(26, 25, "end", "/functions/prior_increment.stan");
     reader.add_event(26, 2, "restart", "model_rubin_full");
-    reader.add_event(168, 142, "end", "model_rubin_full");
+    reader.add_event(169, 143, "end", "model_rubin_full");
     return reader;
 }
 template <typename T1__, typename T2__>
@@ -862,22 +862,25 @@ public:
                 lp_accum__.add(prior_increment_real(prior_hypersd_fam, get_base1(tau, 1, "tau", 1), prior_hypersd_val, pstream__));
             }
             current_statement_begin__ = 133;
-            lp_accum__.add(prior_increment_vec(prior_beta_fam, beta, prior_beta_val, pstream__));
-            current_statement_begin__ = 135;
+            if (as_bool(logical_gt(Nc, 0))) {
+                current_statement_begin__ = 134;
+                lp_accum__.add(prior_increment_vec(prior_beta_fam, beta, prior_beta_val, pstream__));
+            }
+            current_statement_begin__ = 136;
             if (as_bool(logical_eq(pooling_type, 1))) {
-                current_statement_begin__ = 136;
+                current_statement_begin__ = 137;
                 lp_accum__.add(normal_log<propto__>(eta, 0, 1));
             }
-            current_statement_begin__ = 139;
+            current_statement_begin__ = 140;
             for (int i = 1; i <= N; ++i) {
-                current_statement_begin__ = 140;
+                current_statement_begin__ = 141;
                 if (as_bool(logical_lt(pooling_type, 2))) {
-                    current_statement_begin__ = 141;
+                    current_statement_begin__ = 142;
                     lp_accum__.add(normal_log<propto__>(get_base1(y, i, "y", 1), ((get_base1(baseline_k, get_base1(site, i, "site", 1), "baseline_k", 1) + (get_base1(theta_k, get_base1(site, i, "site", 1), "theta_k", 1) * get_base1(treatment, i, "treatment", 1))) + get_base1(fe, i, "fe", 1)), get_base1(sigma_y_k, get_base1(site, i, "site", 1), "sigma_y_k", 1)));
                 }
-                current_statement_begin__ = 142;
+                current_statement_begin__ = 143;
                 if (as_bool(logical_eq(pooling_type, 2))) {
-                    current_statement_begin__ = 143;
+                    current_statement_begin__ = 144;
                     lp_accum__.add(normal_log<propto__>(get_base1(y, i, "y", 1), ((get_base1(baseline_k, get_base1(site, i, "site", 1), "baseline_k", 1) + (get_base1(mu, 1, "mu", 1) * get_base1(treatment, i, "treatment", 1))) + get_base1(fe, i, "fe", 1)), get_base1(sigma_y_k, get_base1(site, i, "site", 1), "sigma_y_k", 1)));
                 }
             }
@@ -1086,45 +1089,45 @@ public:
             }
             if (!include_gqs__) return;
             // declare and define generated quantities
-            current_statement_begin__ = 149;
+            current_statement_begin__ = 150;
             validate_non_negative_index("logpd", "(logical_gt(K_test, 0) ? 1 : 0 )", (logical_gt(K_test, 0) ? 1 : 0 ));
             std::vector<double> logpd((logical_gt(K_test, 0) ? 1 : 0 ), double(0));
             stan::math::initialize(logpd, DUMMY_VAR__);
             stan::math::fill(logpd, DUMMY_VAR__);
-            current_statement_begin__ = 150;
+            current_statement_begin__ = 151;
             validate_non_negative_index("fe_test", "N_test", N_test);
             Eigen::Matrix<double, Eigen::Dynamic, 1> fe_test(N_test);
             stan::math::initialize(fe_test, DUMMY_VAR__);
             stan::math::fill(fe_test, DUMMY_VAR__);
             // generated quantities statements
-            current_statement_begin__ = 151;
+            current_statement_begin__ = 152;
             if (as_bool(logical_gt(K_test, 0))) {
-                current_statement_begin__ = 152;
+                current_statement_begin__ = 153;
                 if (as_bool(logical_eq(Nc, 0))) {
-                    current_statement_begin__ = 153;
+                    current_statement_begin__ = 154;
                     stan::math::assign(fe_test, rep_vector(0.0, N_test));
                 } else {
-                    current_statement_begin__ = 155;
+                    current_statement_begin__ = 156;
                     stan::math::assign(fe_test, multiply(X_test, beta));
                 }
-                current_statement_begin__ = 156;
+                current_statement_begin__ = 157;
                 stan::model::assign(logpd, 
                             stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                             0, 
                             "assigning variable logpd");
-                current_statement_begin__ = 157;
+                current_statement_begin__ = 158;
                 for (int i = 1; i <= N_test; ++i) {
-                    current_statement_begin__ = 158;
+                    current_statement_begin__ = 159;
                     if (as_bool(logical_eq(pooling_type, 1))) {
-                        current_statement_begin__ = 159;
+                        current_statement_begin__ = 160;
                         stan::model::assign(logpd, 
                                     stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                     (stan::model::rvalue(logpd, stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), "logpd") + normal_log(get_base1(test_y, i, "test_y", 1), ((get_base1(baseline_k, get_base1(test_site, i, "test_site", 1), "baseline_k", 1) + (get_base1(mu, 1, "mu", 1) * get_base1(test_treatment, i, "test_treatment", 1))) + get_base1(fe_test, i, "fe_test", 1)), stan::math::sqrt((pow(get_base1(tau, 1, "tau", 1), 2) + pow(get_base1(test_sigma_y_k, get_base1(test_site, i, "test_site", 1), "test_sigma_y_k", 1), 2))))), 
                                     "assigning variable logpd");
                     }
-                    current_statement_begin__ = 161;
+                    current_statement_begin__ = 162;
                     if (as_bool(logical_eq(pooling_type, 2))) {
-                        current_statement_begin__ = 162;
+                        current_statement_begin__ = 163;
                         stan::model::assign(logpd, 
                                     stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                     (stan::model::rvalue(logpd, stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), "logpd") + normal_log(get_base1(test_y, i, "test_y", 1), ((get_base1(baseline_k, get_base1(test_site, i, "test_site", 1), "baseline_k", 1) + (get_base1(mu, 1, "mu", 1) * get_base1(test_treatment, i, "test_treatment", 1))) + get_base1(fe_test, i, "fe_test", 1)), stan::math::sqrt(pow(get_base1(test_sigma_y_k, get_base1(test_site, i, "test_site", 1), "test_sigma_y_k", 1), 2)))), 
@@ -1133,12 +1136,12 @@ public:
                 }
             }
             // validate, write generated quantities
-            current_statement_begin__ = 149;
+            current_statement_begin__ = 150;
             size_t logpd_k_0_max__ = (logical_gt(K_test, 0) ? 1 : 0 );
             for (size_t k_0__ = 0; k_0__ < logpd_k_0_max__; ++k_0__) {
                 vars__.push_back(logpd[k_0__]);
             }
-            current_statement_begin__ = 150;
+            current_statement_begin__ = 151;
             size_t fe_test_j_1_max__ = N_test;
             for (size_t j_1__ = 0; j_1__ < fe_test_j_1_max__; ++j_1__) {
                 vars__.push_back(fe_test(j_1__));
