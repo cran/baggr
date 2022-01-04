@@ -8,6 +8,8 @@ data {
   real theta_hat_k[P,K]; // estimated treatment effects
   real<lower=0> se_theta_k[P,K]; // s.e. of effect estimates
   int pooling_type; //0 if none, 1 if partial, 2 if full
+  int<lower=0, upper=1> cumsum; //if 1, tau = control + trt effect,
+                                //if 0, tau (TE) does not get added to mu ("control")
 
   // priors:
   int prior_hypermean_fam;
@@ -53,7 +55,10 @@ transformed parameters {
     // diag(hypersd) %*% C %*% diag(hypersd) is var-covariance
     // it follows that pre-multiplying gives a Cholesky factor of variance-cov.
     tau[1] = diag_pre_multiply(hypersd[1], L_Omega[1]);
-    theta_k[1] = rep_matrix(mu[1], K) + tau[1] * eta[1];
+    if(cumsum==1)
+      theta_k[1] = rep_matrix(mu[1], K) + tau[1] * eta[1];
+    else
+      theta_k[1] = rep_matrix(cumulative_sum(mu[1]), K) + tau[1] * eta[1];
   }
 }
 
@@ -64,7 +69,7 @@ model {
     // for (k in 1:K)
       // theta_k[k] ~ multi_normal(prior_hypermean_mean, prior_hypermean_scale);
   if(pooling_type != 0) {
-    if(prior_hypermean_fam == 3) //only LKJ allowed at the moment
+    if(prior_hypermean_fam == 3)
       mu[1] ~ multi_normal(prior_hypermean_mean, prior_hypermean_scale);
   } else {
     for(k in 1:K)

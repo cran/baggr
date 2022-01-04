@@ -115,8 +115,9 @@ If you have only few groups, the priors on $V$ will need to be relatively strong
 | summary data "Rubin" (`"rubin"`)           | `tau` and `se`                 | $\hat{\tau_k} \sim N(\tau_k, \hat{se_k}^2)$     | $\tau_k \sim N(\tau, \sigma_{\tau}^2)$  | $\tau \sim \mathcal{N}(0, 100)$, $\sigma_{\tau} \sim \mathcal{U}(0, 10\tilde{\sigma})$  | 
 | "$\mu$ and $\tau$" (`"mutau"`) | `tau`, `mu`, `se.tau`, `se.mu` | $\hat{\tau_k} \sim N(\tau_k, \hat{se_{\tau,k}}^2)$, $\hat{\mu_k} \sim N(\mu_k, \hat{se_{\mu,k}}^2)$  | $\pmatrix{\mu_k \\ \tau_k} \sim N(\pmatrix{\mu \\ \tau}, V)$ | $V = \theta \Omega \theta'$ where $\theta \sim Cauchy(0,10)$, $\Omega \sim LKJ(3)$, $\pmatrix{\mu \\ \tau} \sim N(0,100^2Id_2 )$ |
 | full data "Rubin" (`"rubin_full"`)          | `outcome`, `treatment`, `group`  | Same as for "$\mu$ and $\tau$" | Same as for "$\mu$ and $\tau$" | Same as for "$\mu$ and $\tau$" |
-| Quantiles (`"quantiles"`)         | `outcome`, `treatment`, `group`  | See Meager (2019)    | See Meager (2019)          | See Meager (2019)  |
 | Logit (`"logit"`)  | `outcome`, `treatment`, `group`  | See `vignette("baggr_binary")` | ... | ... |
+
+<!-- | Quantiles (`"quantiles"`)         | `outcome`, `treatment`, `group`  | See Meager (2019)    | See Meager (2019)          | See Meager (2019)  | -->
 
 Where inputs are individual-level data, i.e.  `outcome`, `treatment`, `group`, you can specify column names in as arguments to `baggr()` function. 
 
@@ -132,7 +133,7 @@ In the "Rubin" and "$\mu$ and $\tau$" models, the user can specify custom priors
 
 The possible prior distributions we allow for in the current version are: 
 
-* For `prior_hypermean` we allow `"normal"`, `"uniform"` and `"cauchy"` with any parameter values which are logically possible given support constraints (e.g. user cannot specify a negative variance on a normal distribution or a negative scale on a cauchy) When the model has a vector hypermean, "$\mu$ and $\tau$" model, baggr applies the given prior to all the elements of the vector independently. If the user wishes to specify a prior dependence between the components, one can supply prior_hypermean with a multinormal argument (see `?priors` for details).
+* For `prior_hypermean` we allow `"normal"`, `"uniform"`, `"cauchy"`, and `"lognormal"` with any parameter values which are logically possible given support constraints (e.g. user cannot specify a negative variance on a normal distribution or a negative scale on a cauchy) When the model has a vector hypermean, "$\mu$ and $\tau$" model, baggr applies the given prior to all the elements of the vector independently. If the user wishes to specify a prior dependence between the components, one can supply prior_hypermean with a multinormal argument (see `?priors` for details).
 * For `prior_hypersd` we allow `"normal"` and `"uniform"` with any parameter values which are logically possible given support constraints (as above). 
 * For `prior_hypercor`, which is only necessary when there is a multivariate shrinkage operation (as in the "$\mu$ and $\tau$" model) we allow an LKJ correlation prior (`"lkj"`) with any parameter values which are logically possible given support constraints. For further details of this strategy see Meager (2019).
 

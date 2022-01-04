@@ -136,9 +136,6 @@ df_rare <- data.frame(group = paste("Study", LETTERS[1:5]),
 df_rare
 
 ## -----------------------------------------------------------------------------
-labbe(df_rare)
-
-## -----------------------------------------------------------------------------
 df_rare_logor <- prepare_ma(df_rare, effect = "logOR")
 # df_rare_logor <- prepare_ma(df_rare_ind, effect = "logOR")
 df_rare_logor
@@ -154,13 +151,13 @@ pma01
 bg_correction01 <- baggr(pma01, effect = "logOR", iter = 500)
 bg_correction025 <- baggr(df_rare_logor, effect = "logOR", iter = 500)
 bg_correction1 <- baggr(pma1, effect = "logOR", iter = 500)
-bg_rare_ind <- baggr(df_rare_logor, effect = "logOR", model = "logit", iter = 500, chains = 2)
+bg_rare_ind <- baggr(df_rare, model = "logit", effect = "logOR")
 
 ## ---- echo=T, eval=F----------------------------------------------------------
 #  bg_correction01 <- baggr(pma01, effect = "logOR")
 #  bg_correction025 <- baggr(df_rare_logor, effect = "logOR")
 #  bg_correction1 <- baggr(pma1, effect = "logOR")
-#  bg_rare_ind <- baggr(df_rare_logor, effect = "logOR")
+#  bg_rare_ind <- baggr(df_rare, model = "logit", effect = "logOR")
 
 ## -----------------------------------------------------------------------------
 bgc <- baggr_compare(
@@ -182,11 +179,11 @@ df_rare_logor <- prepare_ma(df_rare, effect = "logOR")
 
 ## ---- include=F---------------------------------------------------------------
 bg_rare_agg <- baggr(df_rare_logor, effect = "logOR")
-bg_rare_ind <- baggr(df_rare_logor, effect = "logOR", model = "logit", iter = 500, chains = 2)
+bg_rare_ind <- baggr(df_rare, effect = "logOR", model = "logit", iter = 500, chains = 2)
 
 ## ---- eval=F, echo=T----------------------------------------------------------
 #  bg_rare_agg <- baggr(df_rare_logor, effect = "logOR")
-#  bg_rare_ind <- baggr(df_rare_logor, effect = "logOR", model = "logit")
+#  bg_rare_ind <- baggr(df_rare, effect = "logOR", model = "logit")
 
 ## -----------------------------------------------------------------------------
 bgc <- baggr_compare(
@@ -199,28 +196,28 @@ plot(bgc)
 ## ----rare events with bsl priors, include = F---------------------------------
 # bg_rare_prior2 <- baggr(df_rare_logor, effect = "logOR", model = "logit",
 #                         prior_control = normal(-4.59, 2))
-bg_rare_prior3 <- baggr(df_rare_logor, effect = "logOR", model = "logit",
+bg_rare_pool_bsl <- baggr(df_rare, effect = "logOR", model = "logit",
                         pooling_control = "partial",
                         chains = 2, iter = 500,
                         prior_control = normal(-4.59, 1), prior_control_sd = normal(0, 2))
-bg_rare_prior4 <- baggr(df_rare_logor, effect = "logOR", model = "logit",
+bg_rare_strong_prior <- baggr(df_rare, effect = "logOR", model = "logit",
                         chains = 2, iter = 500,
                         prior_control = normal(-4.59, 10))
 
 ## ---- eval = FALSE, echo = TRUE-----------------------------------------------
-#  bg_rare_prior3 <- baggr(df_rare_logor, effect = "logOR", model = "logit",
+#  bg_rare_pool_bsl <- baggr(df_rare, effect = "logOR", model = "logit",
 #                          pooling_control = "partial",
 #                          prior_control = normal(-4.59, 1), prior_control_sd = normal(0, 2))
-#  bg_rare_prior4 <- baggr(df_rare_logor, effect = "logOR", model = "logit",
+#  bg_rare_strong_prior <- baggr(df_rare, effect = "logOR", model = "logit",
 #                          prior_control = normal(-4.59, 10))
 
 ## -----------------------------------------------------------------------------
 bgc <- baggr_compare(
-  "Aggregate, 0.1 correction" = bg_correction01, 
-  "Default prior N(0,10^2)" = bg_rare_ind, 
+  "Rubin model" = bg_rare_agg, 
+  "Independent N(0,10^2)" = bg_rare_ind, 
   # "Prior N(-4.59, 2^2)" = bg_rare_prior2, 
-  "Hierarchical prior" = bg_rare_prior3,
-  "Prior N(-4.59, 10^2)" = bg_rare_prior4
+  "Hierarchical prior" = bg_rare_pool_bsl,
+  "Independent N(-4.59, 10^2)" = bg_rare_strong_prior
 )
 
 bgc
