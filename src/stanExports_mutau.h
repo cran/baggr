@@ -35,17 +35,17 @@ stan::io::program_reader prog_reader__() {
     reader.add_event(0, 0, "start", "model_mutau");
     reader.add_event(1, 1, "include", "/functions/prior_increment.stan");
     reader.add_event(1, 0, "start", "/functions/prior_increment.stan");
-    reader.add_event(32, 31, "end", "/functions/prior_increment.stan");
-    reader.add_event(32, 2, "restart", "model_mutau");
-    reader.add_event(150, 118, "end", "model_mutau");
+    reader.add_event(20, 19, "end", "/functions/prior_increment.stan");
+    reader.add_event(20, 2, "restart", "model_mutau");
+    reader.add_event(134, 114, "end", "model_mutau");
     return reader;
 }
-template <typename T1__, typename T2__>
-typename boost::math::tools::promote_args<T1__, T2__>::type
-prior_increment_real(const int& family,
-                         const T1__& y,
-                         const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) {
-    typedef typename boost::math::tools::promote_args<T1__, T2__>::type local_scalar_t__;
+template <bool propto, typename T0__, typename T2__>
+typename boost::math::tools::promote_args<T0__, T2__>::type
+realprior_lpdf(const T0__& theta,
+                   const int& family,
+                   const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) {
+    typedef typename boost::math::tools::promote_args<T0__, T2__>::type local_scalar_t__;
     typedef local_scalar_t__ fun_return_scalar_t__;
     const static bool propto__ = true;
     (void) propto__;
@@ -53,39 +53,22 @@ prior_increment_real(const int& family,
         (void) DUMMY_VAR__;  // suppress unused var warning
     int current_statement_begin__ = -1;
     try {
-        {
         current_statement_begin__ = 3;
-        local_scalar_t__ inc(DUMMY_VAR__);
-        (void) inc;  // dummy to suppress unused var warning
-        stan::math::initialize(inc, DUMMY_VAR__);
-        stan::math::fill(inc, DUMMY_VAR__);
-        current_statement_begin__ = 4;
         if (as_bool(logical_eq(family, 0))) {
+            current_statement_begin__ = 3;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(uniform_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
+        } else if (as_bool(logical_eq(family, 1))) {
+            current_statement_begin__ = 4;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(normal_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
+        } else if (as_bool(logical_eq(family, 2))) {
             current_statement_begin__ = 5;
-            stan::math::assign(inc, uniform_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
-        }
-        current_statement_begin__ = 6;
-        if (as_bool(logical_eq(family, 1))) {
-            current_statement_begin__ = 7;
-            stan::math::assign(inc, normal_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
-        }
-        current_statement_begin__ = 8;
-        if (as_bool(logical_eq(family, 2))) {
-            current_statement_begin__ = 9;
-            stan::math::assign(inc, cauchy_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
-        }
-        current_statement_begin__ = 12;
-        if (as_bool(logical_eq(family, 5))) {
-            current_statement_begin__ = 13;
-            stan::math::assign(inc, lognormal_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
-        }
-        current_statement_begin__ = 14;
-        if (as_bool(logical_eq(family, 6))) {
-            current_statement_begin__ = 15;
-            stan::math::assign(inc, student_t_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1), get_base1(pars, 3, "pars", 1)));
-        }
-        current_statement_begin__ = 16;
-        return stan::math::promote_scalar<fun_return_scalar_t__>(inc);
+            return stan::math::promote_scalar<fun_return_scalar_t__>(cauchy_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
+        } else if (as_bool(logical_eq(family, 5))) {
+            current_statement_begin__ = 8;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(lognormal_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
+        } else {
+            current_statement_begin__ = 10;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(student_t_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1), get_base1(pars, 3, "pars", 1)));
         }
     } catch (const std::exception& e) {
         stan::lang::rethrow_located(e, current_statement_begin__, prog_reader__());
@@ -93,21 +76,28 @@ prior_increment_real(const int& family,
         throw std::runtime_error("*** IF YOU SEE THIS, PLEASE REPORT A BUG ***");
     }
 }
-struct prior_increment_real_functor__ {
-    template <typename T1__, typename T2__>
-        typename boost::math::tools::promote_args<T1__, T2__>::type
-    operator()(const int& family,
-                         const T1__& y,
-                         const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) const {
-        return prior_increment_real(family, y, pars, pstream__);
+template <typename T0__, typename T2__>
+typename boost::math::tools::promote_args<T0__, T2__>::type
+realprior_lpdf(const T0__& theta,
+                   const int& family,
+                   const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) {
+    return realprior_lpdf<false>(theta,family,pars, pstream__);
+}
+struct realprior_lpdf_functor__ {
+    template <bool propto, typename T0__, typename T2__>
+        typename boost::math::tools::promote_args<T0__, T2__>::type
+    operator()(const T0__& theta,
+                   const int& family,
+                   const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) const {
+        return realprior_lpdf(theta, family, pars, pstream__);
     }
 };
-template <typename T1__, typename T2__>
-typename boost::math::tools::promote_args<T1__, T2__>::type
-prior_increment_vec(const int& family,
-                        const Eigen::Matrix<T1__, Eigen::Dynamic, 1>& y,
-                        const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) {
-    typedef typename boost::math::tools::promote_args<T1__, T2__>::type local_scalar_t__;
+template <bool propto, typename T0__, typename T2__>
+typename boost::math::tools::promote_args<T0__, T2__>::type
+vecprior_lpdf(const Eigen::Matrix<T0__, Eigen::Dynamic, 1>& theta,
+                  const int& family,
+                  const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) {
+    typedef typename boost::math::tools::promote_args<T0__, T2__>::type local_scalar_t__;
     typedef local_scalar_t__ fun_return_scalar_t__;
     const static bool propto__ = true;
     (void) propto__;
@@ -115,39 +105,22 @@ prior_increment_vec(const int& family,
         (void) DUMMY_VAR__;  // suppress unused var warning
     int current_statement_begin__ = -1;
     try {
-        {
-        current_statement_begin__ = 20;
-        local_scalar_t__ inc(DUMMY_VAR__);
-        (void) inc;  // dummy to suppress unused var warning
-        stan::math::initialize(inc, DUMMY_VAR__);
-        stan::math::fill(inc, DUMMY_VAR__);
-        current_statement_begin__ = 21;
+        current_statement_begin__ = 14;
         if (as_bool(logical_eq(family, 0))) {
-            current_statement_begin__ = 22;
-            stan::math::assign(inc, uniform_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
-        }
-        current_statement_begin__ = 23;
-        if (as_bool(logical_eq(family, 1))) {
-            current_statement_begin__ = 24;
-            stan::math::assign(inc, normal_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
-        }
-        current_statement_begin__ = 25;
-        if (as_bool(logical_eq(family, 2))) {
-            current_statement_begin__ = 26;
-            stan::math::assign(inc, cauchy_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
-        }
-        current_statement_begin__ = 27;
-        if (as_bool(logical_eq(family, 5))) {
-            current_statement_begin__ = 28;
-            stan::math::assign(inc, lognormal_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
-        }
-        current_statement_begin__ = 29;
-        if (as_bool(logical_eq(family, 6))) {
-            current_statement_begin__ = 30;
-            stan::math::assign(inc, student_t_log(y, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1), get_base1(pars, 3, "pars", 1)));
-        }
-        current_statement_begin__ = 31;
-        return stan::math::promote_scalar<fun_return_scalar_t__>(inc);
+            current_statement_begin__ = 14;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(uniform_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
+        } else if (as_bool(logical_eq(family, 1))) {
+            current_statement_begin__ = 15;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(normal_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
+        } else if (as_bool(logical_eq(family, 2))) {
+            current_statement_begin__ = 16;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(cauchy_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
+        } else if (as_bool(logical_eq(family, 5))) {
+            current_statement_begin__ = 17;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(lognormal_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1)));
+        } else {
+            current_statement_begin__ = 19;
+            return stan::math::promote_scalar<fun_return_scalar_t__>(student_t_log(theta, get_base1(pars, 1, "pars", 1), get_base1(pars, 2, "pars", 1), get_base1(pars, 3, "pars", 1)));
         }
     } catch (const std::exception& e) {
         stan::lang::rethrow_located(e, current_statement_begin__, prog_reader__());
@@ -155,13 +128,20 @@ prior_increment_vec(const int& family,
         throw std::runtime_error("*** IF YOU SEE THIS, PLEASE REPORT A BUG ***");
     }
 }
-struct prior_increment_vec_functor__ {
-    template <typename T1__, typename T2__>
-        typename boost::math::tools::promote_args<T1__, T2__>::type
-    operator()(const int& family,
-                        const Eigen::Matrix<T1__, Eigen::Dynamic, 1>& y,
-                        const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) const {
-        return prior_increment_vec(family, y, pars, pstream__);
+template <typename T0__, typename T2__>
+typename boost::math::tools::promote_args<T0__, T2__>::type
+vecprior_lpdf(const Eigen::Matrix<T0__, Eigen::Dynamic, 1>& theta,
+                  const int& family,
+                  const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) {
+    return vecprior_lpdf<false>(theta,family,pars, pstream__);
+}
+struct vecprior_lpdf_functor__ {
+    template <bool propto, typename T0__, typename T2__>
+        typename boost::math::tools::promote_args<T0__, T2__>::type
+    operator()(const Eigen::Matrix<T0__, Eigen::Dynamic, 1>& theta,
+                  const int& family,
+                  const Eigen::Matrix<T2__, Eigen::Dynamic, 1>& pars, std::ostream* pstream__) const {
+        return vecprior_lpdf(theta, family, pars, pstream__);
     }
 };
 #include <stan_meta_header.hpp>
@@ -215,21 +195,21 @@ public:
         (void) DUMMY_VAR__;  // suppress unused var warning
         try {
             // initialize data block variables from context__
-            current_statement_begin__ = 36;
+            current_statement_begin__ = 24;
             context__.validate_dims("data initialization", "K", "int", context__.to_vec());
             K = int(0);
             vals_i__ = context__.vals_i("K");
             pos__ = 0;
             K = vals_i__[pos__++];
             check_greater_or_equal(function__, "K", K, 0);
-            current_statement_begin__ = 37;
+            current_statement_begin__ = 25;
             context__.validate_dims("data initialization", "P", "int", context__.to_vec());
             P = int(0);
             vals_i__ = context__.vals_i("P");
             pos__ = 0;
             P = vals_i__[pos__++];
             check_greater_or_equal(function__, "P", P, 2);
-            current_statement_begin__ = 38;
+            current_statement_begin__ = 26;
             validate_non_negative_index("theta_hat_k", "P", P);
             validate_non_negative_index("theta_hat_k", "K", K);
             context__.validate_dims("data initialization", "theta_hat_k", "double", context__.to_vec(P,K));
@@ -243,7 +223,7 @@ public:
                     theta_hat_k[k_0__][k_1__] = vals_r__[pos__++];
                 }
             }
-            current_statement_begin__ = 39;
+            current_statement_begin__ = 27;
             validate_non_negative_index("se_theta_k", "P", P);
             validate_non_negative_index("se_theta_k", "K", K);
             context__.validate_dims("data initialization", "se_theta_k", "double", context__.to_vec(P,K));
@@ -264,13 +244,13 @@ public:
                     check_greater_or_equal(function__, "se_theta_k[i_0__][i_1__]", se_theta_k[i_0__][i_1__], 0);
                 }
             }
-            current_statement_begin__ = 40;
+            current_statement_begin__ = 28;
             context__.validate_dims("data initialization", "pooling_type", "int", context__.to_vec());
             pooling_type = int(0);
             vals_i__ = context__.vals_i("pooling_type");
             pos__ = 0;
             pooling_type = vals_i__[pos__++];
-            current_statement_begin__ = 41;
+            current_statement_begin__ = 29;
             context__.validate_dims("data initialization", "cumsum", "int", context__.to_vec());
             cumsum = int(0);
             vals_i__ = context__.vals_i("cumsum");
@@ -278,13 +258,13 @@ public:
             cumsum = vals_i__[pos__++];
             check_greater_or_equal(function__, "cumsum", cumsum, 0);
             check_less_or_equal(function__, "cumsum", cumsum, 1);
-            current_statement_begin__ = 45;
+            current_statement_begin__ = 33;
             context__.validate_dims("data initialization", "prior_hypermean_fam", "int", context__.to_vec());
             prior_hypermean_fam = int(0);
             vals_i__ = context__.vals_i("prior_hypermean_fam");
             pos__ = 0;
             prior_hypermean_fam = vals_i__[pos__++];
-            current_statement_begin__ = 46;
+            current_statement_begin__ = 34;
             validate_non_negative_index("prior_hypermean_mean", "P", P);
             context__.validate_dims("data initialization", "prior_hypermean_mean", "vector_d", context__.to_vec(P));
             prior_hypermean_mean = Eigen::Matrix<double, Eigen::Dynamic, 1>(P);
@@ -294,7 +274,7 @@ public:
             for (size_t j_1__ = 0; j_1__ < prior_hypermean_mean_j_1_max__; ++j_1__) {
                 prior_hypermean_mean(j_1__) = vals_r__[pos__++];
             }
-            current_statement_begin__ = 47;
+            current_statement_begin__ = 35;
             validate_non_negative_index("prior_hypermean_scale", "P", P);
             validate_non_negative_index("prior_hypermean_scale", "P", P);
             context__.validate_dims("data initialization", "prior_hypermean_scale", "matrix_d", context__.to_vec(P,P));
@@ -309,13 +289,13 @@ public:
                 }
             }
             check_greater_or_equal(function__, "prior_hypermean_scale", prior_hypermean_scale, 0);
-            current_statement_begin__ = 48;
+            current_statement_begin__ = 36;
             context__.validate_dims("data initialization", "prior_hypersd_fam", "int", context__.to_vec());
             prior_hypersd_fam = int(0);
             vals_i__ = context__.vals_i("prior_hypersd_fam");
             pos__ = 0;
             prior_hypersd_fam = vals_i__[pos__++];
-            current_statement_begin__ = 49;
+            current_statement_begin__ = 37;
             validate_non_negative_index("prior_hypersd_val", "3", 3);
             context__.validate_dims("data initialization", "prior_hypersd_val", "vector_d", context__.to_vec(3));
             prior_hypersd_val = Eigen::Matrix<double, Eigen::Dynamic, 1>(3);
@@ -325,26 +305,26 @@ public:
             for (size_t j_1__ = 0; j_1__ < prior_hypersd_val_j_1_max__; ++j_1__) {
                 prior_hypersd_val(j_1__) = vals_r__[pos__++];
             }
-            current_statement_begin__ = 50;
+            current_statement_begin__ = 38;
             context__.validate_dims("data initialization", "prior_hypercor_fam", "int", context__.to_vec());
             prior_hypercor_fam = int(0);
             vals_i__ = context__.vals_i("prior_hypercor_fam");
             pos__ = 0;
             prior_hypercor_fam = vals_i__[pos__++];
-            current_statement_begin__ = 51;
+            current_statement_begin__ = 39;
             context__.validate_dims("data initialization", "prior_hypercor_val", "double", context__.to_vec());
             prior_hypercor_val = double(0);
             vals_r__ = context__.vals_r("prior_hypercor_val");
             pos__ = 0;
             prior_hypercor_val = vals_r__[pos__++];
-            current_statement_begin__ = 54;
+            current_statement_begin__ = 42;
             context__.validate_dims("data initialization", "K_test", "int", context__.to_vec());
             K_test = int(0);
             vals_i__ = context__.vals_i("K_test");
             pos__ = 0;
             K_test = vals_i__[pos__++];
             check_greater_or_equal(function__, "K_test", K_test, 0);
-            current_statement_begin__ = 55;
+            current_statement_begin__ = 43;
             validate_non_negative_index("test_theta_hat_k", "P", P);
             validate_non_negative_index("test_theta_hat_k", "K_test", K_test);
             context__.validate_dims("data initialization", "test_theta_hat_k", "double", context__.to_vec(P,K_test));
@@ -358,7 +338,7 @@ public:
                     test_theta_hat_k[k_0__][k_1__] = vals_r__[pos__++];
                 }
             }
-            current_statement_begin__ = 56;
+            current_statement_begin__ = 44;
             validate_non_negative_index("test_se_theta_k", "P", P);
             validate_non_negative_index("test_se_theta_k", "K_test", K_test);
             context__.validate_dims("data initialization", "test_se_theta_k", "double", context__.to_vec(P,K_test));
@@ -380,42 +360,33 @@ public:
                 }
             }
             // initialize transformed data variables
-            current_statement_begin__ = 61;
+            current_statement_begin__ = 49;
             K_pooled = int(0);
             stan::math::fill(K_pooled, std::numeric_limits<int>::min());
+            stan::math::assign(K_pooled,(logical_eq(pooling_type, 2) ? 0 : K ));
             // execute transformed data statements
-            current_statement_begin__ = 62;
-            if (as_bool(logical_eq(pooling_type, 2))) {
-                current_statement_begin__ = 63;
-                stan::math::assign(K_pooled, 0);
-            }
-            current_statement_begin__ = 64;
-            if (as_bool(logical_neq(pooling_type, 2))) {
-                current_statement_begin__ = 65;
-                stan::math::assign(K_pooled, K);
-            }
             // validate transformed data
             // validate, set parameter ranges
             num_params_r__ = 0U;
             param_ranges_i__.clear();
-            current_statement_begin__ = 69;
+            current_statement_begin__ = 53;
             validate_non_negative_index("mu", "P", P);
-            validate_non_negative_index("mu", "(logical_neq(pooling_type, 0) ? 1 : 0 )", (logical_neq(pooling_type, 0) ? 1 : 0 ));
-            num_params_r__ += (P * (logical_neq(pooling_type, 0) ? 1 : 0 ));
-            current_statement_begin__ = 70;
+            validate_non_negative_index("mu", "logical_neq(pooling_type, 0)", logical_neq(pooling_type, 0));
+            num_params_r__ += (P * logical_neq(pooling_type, 0));
+            current_statement_begin__ = 54;
             validate_non_negative_index("L_Omega", "P", P);
             validate_non_negative_index("L_Omega", "P", P);
-            validate_non_negative_index("L_Omega", "(logical_eq(pooling_type, 1) ? 1 : 0 )", (logical_eq(pooling_type, 1) ? 1 : 0 ));
-            num_params_r__ += (((P * (P - 1)) / 2) * (logical_eq(pooling_type, 1) ? 1 : 0 ));
-            current_statement_begin__ = 71;
+            validate_non_negative_index("L_Omega", "logical_eq(pooling_type, 1)", logical_eq(pooling_type, 1));
+            num_params_r__ += (((P * (P - 1)) / 2) * logical_eq(pooling_type, 1));
+            current_statement_begin__ = 55;
             validate_non_negative_index("hypersd", "P", P);
-            validate_non_negative_index("hypersd", "(logical_eq(pooling_type, 1) ? 1 : 0 )", (logical_eq(pooling_type, 1) ? 1 : 0 ));
-            num_params_r__ += (P * (logical_eq(pooling_type, 1) ? 1 : 0 ));
-            current_statement_begin__ = 72;
+            validate_non_negative_index("hypersd", "logical_eq(pooling_type, 1)", logical_eq(pooling_type, 1));
+            num_params_r__ += (P * logical_eq(pooling_type, 1));
+            current_statement_begin__ = 56;
             validate_non_negative_index("eta", "P", P);
             validate_non_negative_index("eta", "K", K);
-            validate_non_negative_index("eta", "(logical_neq(pooling_type, 2) ? 1 : 0 )", (logical_neq(pooling_type, 2) ? 1 : 0 ));
-            num_params_r__ += ((P * K) * (logical_neq(pooling_type, 2) ? 1 : 0 ));
+            validate_non_negative_index("eta", "logical_neq(pooling_type, 2)", logical_neq(pooling_type, 2));
+            num_params_r__ += ((P * K) * logical_neq(pooling_type, 2));
         } catch (const std::exception& e) {
             stan::lang::rethrow_located(e, current_statement_begin__, prog_reader__());
             // Next line prevents compiler griping about no return
@@ -433,23 +404,23 @@ public:
         (void) pos__; // dummy call to supress warning
         std::vector<double> vals_r__;
         std::vector<int> vals_i__;
-        current_statement_begin__ = 69;
+        current_statement_begin__ = 53;
         if (!(context__.contains_r("mu")))
             stan::lang::rethrow_located(std::runtime_error(std::string("Variable mu missing")), current_statement_begin__, prog_reader__());
         vals_r__ = context__.vals_r("mu");
         pos__ = 0U;
         validate_non_negative_index("mu", "P", P);
-        validate_non_negative_index("mu", "(logical_neq(pooling_type, 0) ? 1 : 0 )", (logical_neq(pooling_type, 0) ? 1 : 0 ));
-        context__.validate_dims("parameter initialization", "mu", "vector_d", context__.to_vec((logical_neq(pooling_type, 0) ? 1 : 0 ),P));
-        std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1> > mu((logical_neq(pooling_type, 0) ? 1 : 0 ), Eigen::Matrix<double, Eigen::Dynamic, 1>(P));
+        validate_non_negative_index("mu", "logical_neq(pooling_type, 0)", logical_neq(pooling_type, 0));
+        context__.validate_dims("parameter initialization", "mu", "vector_d", context__.to_vec(logical_neq(pooling_type, 0),P));
+        std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1> > mu(logical_neq(pooling_type, 0), Eigen::Matrix<double, Eigen::Dynamic, 1>(P));
         size_t mu_j_1_max__ = P;
-        size_t mu_k_0_max__ = (logical_neq(pooling_type, 0) ? 1 : 0 );
+        size_t mu_k_0_max__ = logical_neq(pooling_type, 0);
         for (size_t j_1__ = 0; j_1__ < mu_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < mu_k_0_max__; ++k_0__) {
                 mu[k_0__](j_1__) = vals_r__[pos__++];
             }
         }
-        size_t mu_i_0_max__ = (logical_neq(pooling_type, 0) ? 1 : 0 );
+        size_t mu_i_0_max__ = logical_neq(pooling_type, 0);
         for (size_t i_0__ = 0; i_0__ < mu_i_0_max__; ++i_0__) {
             try {
                 writer__.vector_unconstrain(mu[i_0__]);
@@ -457,19 +428,19 @@ public:
                 stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable mu: ") + e.what()), current_statement_begin__, prog_reader__());
             }
         }
-        current_statement_begin__ = 70;
+        current_statement_begin__ = 54;
         if (!(context__.contains_r("L_Omega")))
             stan::lang::rethrow_located(std::runtime_error(std::string("Variable L_Omega missing")), current_statement_begin__, prog_reader__());
         vals_r__ = context__.vals_r("L_Omega");
         pos__ = 0U;
         validate_non_negative_index("L_Omega", "P", P);
         validate_non_negative_index("L_Omega", "P", P);
-        validate_non_negative_index("L_Omega", "(logical_eq(pooling_type, 1) ? 1 : 0 )", (logical_eq(pooling_type, 1) ? 1 : 0 ));
-        context__.validate_dims("parameter initialization", "L_Omega", "matrix_d", context__.to_vec((logical_eq(pooling_type, 1) ? 1 : 0 ),P,P));
-        std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > L_Omega((logical_eq(pooling_type, 1) ? 1 : 0 ), Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(P, P));
+        validate_non_negative_index("L_Omega", "logical_eq(pooling_type, 1)", logical_eq(pooling_type, 1));
+        context__.validate_dims("parameter initialization", "L_Omega", "matrix_d", context__.to_vec(logical_eq(pooling_type, 1),P,P));
+        std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > L_Omega(logical_eq(pooling_type, 1), Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(P, P));
         size_t L_Omega_j_2_max__ = P;
         size_t L_Omega_j_1_max__ = P;
-        size_t L_Omega_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t L_Omega_k_0_max__ = logical_eq(pooling_type, 1);
         for (size_t j_2__ = 0; j_2__ < L_Omega_j_2_max__; ++j_2__) {
             for (size_t j_1__ = 0; j_1__ < L_Omega_j_1_max__; ++j_1__) {
                 for (size_t k_0__ = 0; k_0__ < L_Omega_k_0_max__; ++k_0__) {
@@ -477,7 +448,7 @@ public:
                 }
             }
         }
-        size_t L_Omega_i_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t L_Omega_i_0_max__ = logical_eq(pooling_type, 1);
         for (size_t i_0__ = 0; i_0__ < L_Omega_i_0_max__; ++i_0__) {
             try {
                 writer__.cholesky_factor_corr_unconstrain(L_Omega[i_0__]);
@@ -485,23 +456,23 @@ public:
                 stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable L_Omega: ") + e.what()), current_statement_begin__, prog_reader__());
             }
         }
-        current_statement_begin__ = 71;
+        current_statement_begin__ = 55;
         if (!(context__.contains_r("hypersd")))
             stan::lang::rethrow_located(std::runtime_error(std::string("Variable hypersd missing")), current_statement_begin__, prog_reader__());
         vals_r__ = context__.vals_r("hypersd");
         pos__ = 0U;
         validate_non_negative_index("hypersd", "P", P);
-        validate_non_negative_index("hypersd", "(logical_eq(pooling_type, 1) ? 1 : 0 )", (logical_eq(pooling_type, 1) ? 1 : 0 ));
-        context__.validate_dims("parameter initialization", "hypersd", "vector_d", context__.to_vec((logical_eq(pooling_type, 1) ? 1 : 0 ),P));
-        std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1> > hypersd((logical_eq(pooling_type, 1) ? 1 : 0 ), Eigen::Matrix<double, Eigen::Dynamic, 1>(P));
+        validate_non_negative_index("hypersd", "logical_eq(pooling_type, 1)", logical_eq(pooling_type, 1));
+        context__.validate_dims("parameter initialization", "hypersd", "vector_d", context__.to_vec(logical_eq(pooling_type, 1),P));
+        std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1> > hypersd(logical_eq(pooling_type, 1), Eigen::Matrix<double, Eigen::Dynamic, 1>(P));
         size_t hypersd_j_1_max__ = P;
-        size_t hypersd_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t hypersd_k_0_max__ = logical_eq(pooling_type, 1);
         for (size_t j_1__ = 0; j_1__ < hypersd_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < hypersd_k_0_max__; ++k_0__) {
                 hypersd[k_0__](j_1__) = vals_r__[pos__++];
             }
         }
-        size_t hypersd_i_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t hypersd_i_0_max__ = logical_eq(pooling_type, 1);
         for (size_t i_0__ = 0; i_0__ < hypersd_i_0_max__; ++i_0__) {
             try {
                 writer__.vector_lb_unconstrain(0, hypersd[i_0__]);
@@ -509,19 +480,19 @@ public:
                 stan::lang::rethrow_located(std::runtime_error(std::string("Error transforming variable hypersd: ") + e.what()), current_statement_begin__, prog_reader__());
             }
         }
-        current_statement_begin__ = 72;
+        current_statement_begin__ = 56;
         if (!(context__.contains_r("eta")))
             stan::lang::rethrow_located(std::runtime_error(std::string("Variable eta missing")), current_statement_begin__, prog_reader__());
         vals_r__ = context__.vals_r("eta");
         pos__ = 0U;
         validate_non_negative_index("eta", "P", P);
         validate_non_negative_index("eta", "K", K);
-        validate_non_negative_index("eta", "(logical_neq(pooling_type, 2) ? 1 : 0 )", (logical_neq(pooling_type, 2) ? 1 : 0 ));
-        context__.validate_dims("parameter initialization", "eta", "matrix_d", context__.to_vec((logical_neq(pooling_type, 2) ? 1 : 0 ),P,K));
-        std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > eta((logical_neq(pooling_type, 2) ? 1 : 0 ), Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(P, K));
+        validate_non_negative_index("eta", "logical_neq(pooling_type, 2)", logical_neq(pooling_type, 2));
+        context__.validate_dims("parameter initialization", "eta", "matrix_d", context__.to_vec(logical_neq(pooling_type, 2),P,K));
+        std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > eta(logical_neq(pooling_type, 2), Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(P, K));
         size_t eta_j_2_max__ = K;
         size_t eta_j_1_max__ = P;
-        size_t eta_k_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+        size_t eta_k_0_max__ = logical_neq(pooling_type, 2);
         for (size_t j_2__ = 0; j_2__ < eta_j_2_max__; ++j_2__) {
             for (size_t j_1__ = 0; j_1__ < eta_j_1_max__; ++j_1__) {
                 for (size_t k_0__ = 0; k_0__ < eta_k_0_max__; ++k_0__) {
@@ -529,7 +500,7 @@ public:
                 }
             }
         }
-        size_t eta_i_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+        size_t eta_i_0_max__ = logical_neq(pooling_type, 2);
         for (size_t i_0__ = 0; i_0__ < eta_i_0_max__; ++i_0__) {
             try {
                 writer__.matrix_unconstrain(eta[i_0__]);
@@ -562,9 +533,9 @@ public:
         try {
             stan::io::reader<local_scalar_t__> in__(params_r__, params_i__);
             // model parameters
-            current_statement_begin__ = 69;
+            current_statement_begin__ = 53;
             std::vector<Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> > mu;
-            size_t mu_d_0_max__ = (logical_neq(pooling_type, 0) ? 1 : 0 );
+            size_t mu_d_0_max__ = logical_neq(pooling_type, 0);
             mu.reserve(mu_d_0_max__);
             for (size_t d_0__ = 0; d_0__ < mu_d_0_max__; ++d_0__) {
                 if (jacobian__)
@@ -572,9 +543,9 @@ public:
                 else
                     mu.push_back(in__.vector_constrain(P));
             }
-            current_statement_begin__ = 70;
+            current_statement_begin__ = 54;
             std::vector<Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic> > L_Omega;
-            size_t L_Omega_d_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+            size_t L_Omega_d_0_max__ = logical_eq(pooling_type, 1);
             L_Omega.reserve(L_Omega_d_0_max__);
             for (size_t d_0__ = 0; d_0__ < L_Omega_d_0_max__; ++d_0__) {
                 if (jacobian__)
@@ -582,9 +553,9 @@ public:
                 else
                     L_Omega.push_back(in__.cholesky_factor_corr_constrain(P));
             }
-            current_statement_begin__ = 71;
+            current_statement_begin__ = 55;
             std::vector<Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, 1> > hypersd;
-            size_t hypersd_d_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+            size_t hypersd_d_0_max__ = logical_eq(pooling_type, 1);
             hypersd.reserve(hypersd_d_0_max__);
             for (size_t d_0__ = 0; d_0__ < hypersd_d_0_max__; ++d_0__) {
                 if (jacobian__)
@@ -592,9 +563,9 @@ public:
                 else
                     hypersd.push_back(in__.vector_lb_constrain(0, P));
             }
-            current_statement_begin__ = 72;
+            current_statement_begin__ = 56;
             std::vector<Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic> > eta;
-            size_t eta_d_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+            size_t eta_d_0_max__ = logical_neq(pooling_type, 2);
             eta.reserve(eta_d_0_max__);
             for (size_t d_0__ = 0; d_0__ < eta_d_0_max__; ++d_0__) {
                 if (jacobian__)
@@ -603,45 +574,45 @@ public:
                     eta.push_back(in__.matrix_constrain(P, K));
             }
             // transformed parameters
-            current_statement_begin__ = 76;
+            current_statement_begin__ = 60;
             validate_non_negative_index("theta_k", "P", P);
             validate_non_negative_index("theta_k", "K", K);
-            validate_non_negative_index("theta_k", "(logical_neq(pooling_type, 2) ? 1 : 0 )", (logical_neq(pooling_type, 2) ? 1 : 0 ));
-            std::vector<Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic> > theta_k((logical_neq(pooling_type, 2) ? 1 : 0 ), Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic>(P, K));
+            validate_non_negative_index("theta_k", "logical_neq(pooling_type, 2)", logical_neq(pooling_type, 2));
+            std::vector<Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic> > theta_k(logical_neq(pooling_type, 2), Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic>(P, K));
             stan::math::initialize(theta_k, DUMMY_VAR__);
             stan::math::fill(theta_k, DUMMY_VAR__);
-            current_statement_begin__ = 77;
+            current_statement_begin__ = 61;
             validate_non_negative_index("tau", "P", P);
             validate_non_negative_index("tau", "P", P);
-            validate_non_negative_index("tau", "(logical_eq(pooling_type, 1) ? 1 : 0 )", (logical_eq(pooling_type, 1) ? 1 : 0 ));
-            std::vector<Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic> > tau((logical_eq(pooling_type, 1) ? 1 : 0 ), Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic>(P, P));
+            validate_non_negative_index("tau", "logical_eq(pooling_type, 1)", logical_eq(pooling_type, 1));
+            std::vector<Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic> > tau(logical_eq(pooling_type, 1), Eigen::Matrix<local_scalar_t__, Eigen::Dynamic, Eigen::Dynamic>(P, P));
             stan::math::initialize(tau, DUMMY_VAR__);
             stan::math::fill(tau, DUMMY_VAR__);
             // transformed parameters block statements
-            current_statement_begin__ = 79;
+            current_statement_begin__ = 63;
             if (as_bool(logical_eq(pooling_type, 0))) {
-                current_statement_begin__ = 80;
+                current_statement_begin__ = 64;
                 stan::model::assign(theta_k, 
                             stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                             get_base1(eta, 1, "eta", 1), 
                             "assigning variable theta_k");
             }
-            current_statement_begin__ = 81;
+            current_statement_begin__ = 65;
             if (as_bool(logical_eq(pooling_type, 1))) {
-                current_statement_begin__ = 87;
+                current_statement_begin__ = 71;
                 stan::model::assign(tau, 
                             stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                             diag_pre_multiply(get_base1(hypersd, 1, "hypersd", 1), get_base1(L_Omega, 1, "L_Omega", 1)), 
                             "assigning variable tau");
-                current_statement_begin__ = 88;
+                current_statement_begin__ = 72;
                 if (as_bool(logical_eq(cumsum, 1))) {
-                    current_statement_begin__ = 89;
+                    current_statement_begin__ = 73;
                     stan::model::assign(theta_k, 
                                 stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                 add(rep_matrix(get_base1(mu, 1, "mu", 1), K), multiply(get_base1(tau, 1, "tau", 1), get_base1(eta, 1, "eta", 1))), 
                                 "assigning variable theta_k");
                 } else {
-                    current_statement_begin__ = 91;
+                    current_statement_begin__ = 75;
                     stan::model::assign(theta_k, 
                                 stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                 add(rep_matrix(cumulative_sum(get_base1(mu, 1, "mu", 1)), K), multiply(get_base1(tau, 1, "tau", 1), get_base1(eta, 1, "eta", 1))), 
@@ -651,8 +622,8 @@ public:
             // validate transformed parameters
             const char* function__ = "validate transformed params";
             (void) function__;  // dummy to suppress unused var warning
-            current_statement_begin__ = 76;
-            size_t theta_k_k_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+            current_statement_begin__ = 60;
+            size_t theta_k_k_0_max__ = logical_neq(pooling_type, 2);
             size_t theta_k_j_1_max__ = P;
             size_t theta_k_j_2_max__ = K;
             for (size_t k_0__ = 0; k_0__ < theta_k_k_0_max__; ++k_0__) {
@@ -666,8 +637,8 @@ public:
                     }
                 }
             }
-            current_statement_begin__ = 77;
-            size_t tau_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+            current_statement_begin__ = 61;
+            size_t tau_k_0_max__ = logical_eq(pooling_type, 1);
             size_t tau_j_1_max__ = P;
             size_t tau_j_2_max__ = P;
             for (size_t k_0__ = 0; k_0__ < tau_k_0_max__; ++k_0__) {
@@ -682,50 +653,50 @@ public:
                 }
             }
             // model body
-            current_statement_begin__ = 101;
+            current_statement_begin__ = 85;
             if (as_bool(logical_neq(pooling_type, 0))) {
-                current_statement_begin__ = 102;
+                current_statement_begin__ = 86;
                 if (as_bool(logical_eq(prior_hypermean_fam, 3))) {
-                    current_statement_begin__ = 103;
+                    current_statement_begin__ = 87;
                     lp_accum__.add(multi_normal_log<propto__>(get_base1(mu, 1, "mu", 1), prior_hypermean_mean, prior_hypermean_scale));
                 }
             } else {
-                current_statement_begin__ = 105;
+                current_statement_begin__ = 89;
                 for (int k = 1; k <= K; ++k) {
-                    current_statement_begin__ = 106;
+                    current_statement_begin__ = 90;
                     lp_accum__.add(multi_normal_log<propto__>(stan::model::rvalue(get_base1(eta, 1, "eta", 1), stan::model::cons_list(stan::model::index_omni(), stan::model::cons_list(stan::model::index_uni(k), stan::model::nil_index_list())), "eta[1]"), prior_hypermean_mean, prior_hypermean_scale));
                 }
             }
-            current_statement_begin__ = 110;
+            current_statement_begin__ = 94;
             if (as_bool(logical_eq(pooling_type, 1))) {
-                current_statement_begin__ = 111;
+                current_statement_begin__ = 95;
                 lp_accum__.add(std_normal_log<propto__>(to_vector(get_base1(eta, 1, "eta", 1))));
-                current_statement_begin__ = 113;
+                current_statement_begin__ = 97;
                 for (int p = 1; p <= P; ++p) {
-                    current_statement_begin__ = 114;
-                    lp_accum__.add(prior_increment_real(prior_hypersd_fam, get_base1(get_base1(hypersd, 1, "hypersd", 1), p, "hypersd", 2), prior_hypersd_val, pstream__));
+                    current_statement_begin__ = 98;
+                    lp_accum__.add(realprior_lpdf<propto__>(get_base1(get_base1(hypersd, 1, "hypersd", 1), p, "hypersd", 2), prior_hypersd_fam, prior_hypersd_val, pstream__));
                 }
-                current_statement_begin__ = 117;
+                current_statement_begin__ = 101;
                 lp_accum__.add(lkj_corr_cholesky_log<propto__>(get_base1(L_Omega, 1, "L_Omega", 1), prior_hypercor_val));
             }
-            current_statement_begin__ = 120;
+            current_statement_begin__ = 104;
             if (as_bool((primitive_value(logical_eq(pooling_type, 1)) && primitive_value(logical_gt(K, 0))))) {
-                current_statement_begin__ = 121;
+                current_statement_begin__ = 105;
                 for (int k = 1; k <= K; ++k) {
-                    current_statement_begin__ = 123;
+                    current_statement_begin__ = 107;
                     for (int p = 1; p <= P; ++p) {
-                        current_statement_begin__ = 124;
+                        current_statement_begin__ = 108;
                         lp_accum__.add(normal_log<propto__>(get_base1(get_base1(theta_hat_k, p, "theta_hat_k", 1), k, "theta_hat_k", 2), get_base1(get_base1(theta_k, 1, "theta_k", 1), p, k, "theta_k", 2), get_base1(get_base1(se_theta_k, p, "se_theta_k", 1), k, "se_theta_k", 2)));
                     }
                 }
             }
-            current_statement_begin__ = 127;
+            current_statement_begin__ = 111;
             if (as_bool((primitive_value(logical_eq(pooling_type, 2)) && primitive_value(logical_gt(K, 0))))) {
-                current_statement_begin__ = 128;
+                current_statement_begin__ = 112;
                 for (int k = 1; k <= K; ++k) {
-                    current_statement_begin__ = 129;
+                    current_statement_begin__ = 113;
                     for (int p = 1; p <= P; ++p) {
-                        current_statement_begin__ = 130;
+                        current_statement_begin__ = 114;
                         lp_accum__.add(normal_log<propto__>(get_base1(get_base1(theta_hat_k, p, "theta_hat_k", 1), k, "theta_hat_k", 2), get_base1(get_base1(mu, 1, "mu", 1), p, "mu", 2), get_base1(get_base1(se_theta_k, p, "se_theta_k", 1), k, "se_theta_k", 2)));
                     }
                 }
@@ -762,35 +733,35 @@ public:
         dimss__.resize(0);
         std::vector<size_t> dims__;
         dims__.resize(0);
-        dims__.push_back((logical_neq(pooling_type, 0) ? 1 : 0 ));
+        dims__.push_back(logical_neq(pooling_type, 0));
         dims__.push_back(P);
         dimss__.push_back(dims__);
         dims__.resize(0);
-        dims__.push_back((logical_eq(pooling_type, 1) ? 1 : 0 ));
+        dims__.push_back(logical_eq(pooling_type, 1));
         dims__.push_back(P);
         dims__.push_back(P);
         dimss__.push_back(dims__);
         dims__.resize(0);
-        dims__.push_back((logical_eq(pooling_type, 1) ? 1 : 0 ));
+        dims__.push_back(logical_eq(pooling_type, 1));
         dims__.push_back(P);
         dimss__.push_back(dims__);
         dims__.resize(0);
-        dims__.push_back((logical_neq(pooling_type, 2) ? 1 : 0 ));
+        dims__.push_back(logical_neq(pooling_type, 2));
         dims__.push_back(P);
         dims__.push_back(K);
         dimss__.push_back(dims__);
         dims__.resize(0);
-        dims__.push_back((logical_neq(pooling_type, 2) ? 1 : 0 ));
+        dims__.push_back(logical_neq(pooling_type, 2));
         dims__.push_back(P);
         dims__.push_back(K);
         dimss__.push_back(dims__);
         dims__.resize(0);
-        dims__.push_back((logical_eq(pooling_type, 1) ? 1 : 0 ));
+        dims__.push_back(logical_eq(pooling_type, 1));
         dims__.push_back(P);
         dims__.push_back(P);
         dimss__.push_back(dims__);
         dims__.resize(0);
-        dims__.push_back((logical_gt(K_test, 0) ? 1 : 0 ));
+        dims__.push_back(logical_gt(K_test, 0));
         dimss__.push_back(dims__);
     }
     template <typename RNG>
@@ -808,27 +779,27 @@ public:
         (void) function__;  // dummy to suppress unused var warning
         // read-transform, write parameters
         std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1> > mu;
-        size_t mu_d_0_max__ = (logical_neq(pooling_type, 0) ? 1 : 0 );
+        size_t mu_d_0_max__ = logical_neq(pooling_type, 0);
         mu.reserve(mu_d_0_max__);
         for (size_t d_0__ = 0; d_0__ < mu_d_0_max__; ++d_0__) {
             mu.push_back(in__.vector_constrain(P));
         }
         size_t mu_j_1_max__ = P;
-        size_t mu_k_0_max__ = (logical_neq(pooling_type, 0) ? 1 : 0 );
+        size_t mu_k_0_max__ = logical_neq(pooling_type, 0);
         for (size_t j_1__ = 0; j_1__ < mu_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < mu_k_0_max__; ++k_0__) {
                 vars__.push_back(mu[k_0__](j_1__));
             }
         }
         std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > L_Omega;
-        size_t L_Omega_d_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t L_Omega_d_0_max__ = logical_eq(pooling_type, 1);
         L_Omega.reserve(L_Omega_d_0_max__);
         for (size_t d_0__ = 0; d_0__ < L_Omega_d_0_max__; ++d_0__) {
             L_Omega.push_back(in__.cholesky_factor_corr_constrain(P));
         }
         size_t L_Omega_j_2_max__ = P;
         size_t L_Omega_j_1_max__ = P;
-        size_t L_Omega_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t L_Omega_k_0_max__ = logical_eq(pooling_type, 1);
         for (size_t j_2__ = 0; j_2__ < L_Omega_j_2_max__; ++j_2__) {
             for (size_t j_1__ = 0; j_1__ < L_Omega_j_1_max__; ++j_1__) {
                 for (size_t k_0__ = 0; k_0__ < L_Omega_k_0_max__; ++k_0__) {
@@ -837,27 +808,27 @@ public:
             }
         }
         std::vector<Eigen::Matrix<double, Eigen::Dynamic, 1> > hypersd;
-        size_t hypersd_d_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t hypersd_d_0_max__ = logical_eq(pooling_type, 1);
         hypersd.reserve(hypersd_d_0_max__);
         for (size_t d_0__ = 0; d_0__ < hypersd_d_0_max__; ++d_0__) {
             hypersd.push_back(in__.vector_lb_constrain(0, P));
         }
         size_t hypersd_j_1_max__ = P;
-        size_t hypersd_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t hypersd_k_0_max__ = logical_eq(pooling_type, 1);
         for (size_t j_1__ = 0; j_1__ < hypersd_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < hypersd_k_0_max__; ++k_0__) {
                 vars__.push_back(hypersd[k_0__](j_1__));
             }
         }
         std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > eta;
-        size_t eta_d_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+        size_t eta_d_0_max__ = logical_neq(pooling_type, 2);
         eta.reserve(eta_d_0_max__);
         for (size_t d_0__ = 0; d_0__ < eta_d_0_max__; ++d_0__) {
             eta.push_back(in__.matrix_constrain(P, K));
         }
         size_t eta_j_2_max__ = K;
         size_t eta_j_1_max__ = P;
-        size_t eta_k_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+        size_t eta_k_0_max__ = logical_neq(pooling_type, 2);
         for (size_t j_2__ = 0; j_2__ < eta_j_2_max__; ++j_2__) {
             for (size_t j_1__ = 0; j_1__ < eta_j_1_max__; ++j_1__) {
                 for (size_t k_0__ = 0; k_0__ < eta_k_0_max__; ++k_0__) {
@@ -873,45 +844,45 @@ public:
         if (!include_tparams__ && !include_gqs__) return;
         try {
             // declare and define transformed parameters
-            current_statement_begin__ = 76;
+            current_statement_begin__ = 60;
             validate_non_negative_index("theta_k", "P", P);
             validate_non_negative_index("theta_k", "K", K);
-            validate_non_negative_index("theta_k", "(logical_neq(pooling_type, 2) ? 1 : 0 )", (logical_neq(pooling_type, 2) ? 1 : 0 ));
-            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > theta_k((logical_neq(pooling_type, 2) ? 1 : 0 ), Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(P, K));
+            validate_non_negative_index("theta_k", "logical_neq(pooling_type, 2)", logical_neq(pooling_type, 2));
+            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > theta_k(logical_neq(pooling_type, 2), Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(P, K));
             stan::math::initialize(theta_k, DUMMY_VAR__);
             stan::math::fill(theta_k, DUMMY_VAR__);
-            current_statement_begin__ = 77;
+            current_statement_begin__ = 61;
             validate_non_negative_index("tau", "P", P);
             validate_non_negative_index("tau", "P", P);
-            validate_non_negative_index("tau", "(logical_eq(pooling_type, 1) ? 1 : 0 )", (logical_eq(pooling_type, 1) ? 1 : 0 ));
-            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > tau((logical_eq(pooling_type, 1) ? 1 : 0 ), Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(P, P));
+            validate_non_negative_index("tau", "logical_eq(pooling_type, 1)", logical_eq(pooling_type, 1));
+            std::vector<Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> > tau(logical_eq(pooling_type, 1), Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic>(P, P));
             stan::math::initialize(tau, DUMMY_VAR__);
             stan::math::fill(tau, DUMMY_VAR__);
             // do transformed parameters statements
-            current_statement_begin__ = 79;
+            current_statement_begin__ = 63;
             if (as_bool(logical_eq(pooling_type, 0))) {
-                current_statement_begin__ = 80;
+                current_statement_begin__ = 64;
                 stan::model::assign(theta_k, 
                             stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                             get_base1(eta, 1, "eta", 1), 
                             "assigning variable theta_k");
             }
-            current_statement_begin__ = 81;
+            current_statement_begin__ = 65;
             if (as_bool(logical_eq(pooling_type, 1))) {
-                current_statement_begin__ = 87;
+                current_statement_begin__ = 71;
                 stan::model::assign(tau, 
                             stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                             diag_pre_multiply(get_base1(hypersd, 1, "hypersd", 1), get_base1(L_Omega, 1, "L_Omega", 1)), 
                             "assigning variable tau");
-                current_statement_begin__ = 88;
+                current_statement_begin__ = 72;
                 if (as_bool(logical_eq(cumsum, 1))) {
-                    current_statement_begin__ = 89;
+                    current_statement_begin__ = 73;
                     stan::model::assign(theta_k, 
                                 stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                 add(rep_matrix(get_base1(mu, 1, "mu", 1), K), multiply(get_base1(tau, 1, "tau", 1), get_base1(eta, 1, "eta", 1))), 
                                 "assigning variable theta_k");
                 } else {
-                    current_statement_begin__ = 91;
+                    current_statement_begin__ = 75;
                     stan::model::assign(theta_k, 
                                 stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                 add(rep_matrix(cumulative_sum(get_base1(mu, 1, "mu", 1)), K), multiply(get_base1(tau, 1, "tau", 1), get_base1(eta, 1, "eta", 1))), 
@@ -926,7 +897,7 @@ public:
             if (include_tparams__) {
                 size_t theta_k_j_2_max__ = K;
                 size_t theta_k_j_1_max__ = P;
-                size_t theta_k_k_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+                size_t theta_k_k_0_max__ = logical_neq(pooling_type, 2);
                 for (size_t j_2__ = 0; j_2__ < theta_k_j_2_max__; ++j_2__) {
                     for (size_t j_1__ = 0; j_1__ < theta_k_j_1_max__; ++j_1__) {
                         for (size_t k_0__ = 0; k_0__ < theta_k_k_0_max__; ++k_0__) {
@@ -936,7 +907,7 @@ public:
                 }
                 size_t tau_j_2_max__ = P;
                 size_t tau_j_1_max__ = P;
-                size_t tau_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+                size_t tau_k_0_max__ = logical_eq(pooling_type, 1);
                 for (size_t j_2__ = 0; j_2__ < tau_j_2_max__; ++j_2__) {
                     for (size_t j_1__ = 0; j_1__ < tau_j_1_max__; ++j_1__) {
                         for (size_t k_0__ = 0; k_0__ < tau_k_0_max__; ++k_0__) {
@@ -947,34 +918,34 @@ public:
             }
             if (!include_gqs__) return;
             // declare and define generated quantities
-            current_statement_begin__ = 134;
-            validate_non_negative_index("logpd", "(logical_gt(K_test, 0) ? 1 : 0 )", (logical_gt(K_test, 0) ? 1 : 0 ));
-            std::vector<double> logpd((logical_gt(K_test, 0) ? 1 : 0 ), double(0));
+            current_statement_begin__ = 118;
+            validate_non_negative_index("logpd", "logical_gt(K_test, 0)", logical_gt(K_test, 0));
+            std::vector<double> logpd(logical_gt(K_test, 0), double(0));
             stan::math::initialize(logpd, DUMMY_VAR__);
             stan::math::fill(logpd, DUMMY_VAR__);
             // generated quantities statements
-            current_statement_begin__ = 135;
+            current_statement_begin__ = 119;
             if (as_bool(logical_gt(K_test, 0))) {
-                current_statement_begin__ = 136;
+                current_statement_begin__ = 120;
                 stan::model::assign(logpd, 
                             stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                             0, 
                             "assigning variable logpd");
-                current_statement_begin__ = 137;
+                current_statement_begin__ = 121;
                 for (int k = 1; k <= K_test; ++k) {
-                    current_statement_begin__ = 138;
+                    current_statement_begin__ = 122;
                     for (int p = 1; p <= P; ++p) {
-                        current_statement_begin__ = 139;
+                        current_statement_begin__ = 123;
                         if (as_bool(logical_eq(pooling_type, 1))) {
-                            current_statement_begin__ = 140;
+                            current_statement_begin__ = 124;
                             stan::model::assign(logpd, 
                                         stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                         (stan::model::rvalue(logpd, stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), "logpd") + normal_log(get_base1(get_base1(test_theta_hat_k, p, "test_theta_hat_k", 1), k, "test_theta_hat_k", 2), get_base1(mu, 1, "mu", 1), stan::math::sqrt((pow(get_base1(get_base1(tau, 1, "tau", 1), p, p, "tau", 2), 2) + pow(get_base1(get_base1(test_se_theta_k, p, "test_se_theta_k", 1), k, "test_se_theta_k", 2), 2))))), 
                                         "assigning variable logpd");
                         }
-                        current_statement_begin__ = 142;
+                        current_statement_begin__ = 126;
                         if (as_bool(logical_eq(pooling_type, 2))) {
-                            current_statement_begin__ = 143;
+                            current_statement_begin__ = 127;
                             stan::model::assign(logpd, 
                                         stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), 
                                         (stan::model::rvalue(logpd, stan::model::cons_list(stan::model::index_uni(1), stan::model::nil_index_list()), "logpd") + normal_log(get_base1(get_base1(test_theta_hat_k, p, "test_theta_hat_k", 1), k, "test_theta_hat_k", 2), get_base1(mu, 1, "mu", 1), stan::math::sqrt(pow(get_base1(get_base1(test_se_theta_k, p, "test_se_theta_k", 1), k, "test_se_theta_k", 2), 2)))), 
@@ -984,8 +955,8 @@ public:
                 }
             }
             // validate, write generated quantities
-            current_statement_begin__ = 134;
-            size_t logpd_k_0_max__ = (logical_gt(K_test, 0) ? 1 : 0 );
+            current_statement_begin__ = 118;
+            size_t logpd_k_0_max__ = logical_gt(K_test, 0);
             for (size_t k_0__ = 0; k_0__ < logpd_k_0_max__; ++k_0__) {
                 vars__.push_back(logpd[k_0__]);
             }
@@ -1020,7 +991,7 @@ public:
                                  bool include_gqs__ = true) const {
         std::stringstream param_name_stream__;
         size_t mu_j_1_max__ = P;
-        size_t mu_k_0_max__ = (logical_neq(pooling_type, 0) ? 1 : 0 );
+        size_t mu_k_0_max__ = logical_neq(pooling_type, 0);
         for (size_t j_1__ = 0; j_1__ < mu_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < mu_k_0_max__; ++k_0__) {
                 param_name_stream__.str(std::string());
@@ -1030,7 +1001,7 @@ public:
         }
         size_t L_Omega_j_2_max__ = P;
         size_t L_Omega_j_1_max__ = P;
-        size_t L_Omega_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t L_Omega_k_0_max__ = logical_eq(pooling_type, 1);
         for (size_t j_2__ = 0; j_2__ < L_Omega_j_2_max__; ++j_2__) {
             for (size_t j_1__ = 0; j_1__ < L_Omega_j_1_max__; ++j_1__) {
                 for (size_t k_0__ = 0; k_0__ < L_Omega_k_0_max__; ++k_0__) {
@@ -1041,7 +1012,7 @@ public:
             }
         }
         size_t hypersd_j_1_max__ = P;
-        size_t hypersd_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t hypersd_k_0_max__ = logical_eq(pooling_type, 1);
         for (size_t j_1__ = 0; j_1__ < hypersd_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < hypersd_k_0_max__; ++k_0__) {
                 param_name_stream__.str(std::string());
@@ -1051,7 +1022,7 @@ public:
         }
         size_t eta_j_2_max__ = K;
         size_t eta_j_1_max__ = P;
-        size_t eta_k_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+        size_t eta_k_0_max__ = logical_neq(pooling_type, 2);
         for (size_t j_2__ = 0; j_2__ < eta_j_2_max__; ++j_2__) {
             for (size_t j_1__ = 0; j_1__ < eta_j_1_max__; ++j_1__) {
                 for (size_t k_0__ = 0; k_0__ < eta_k_0_max__; ++k_0__) {
@@ -1065,7 +1036,7 @@ public:
         if (include_tparams__) {
             size_t theta_k_j_2_max__ = K;
             size_t theta_k_j_1_max__ = P;
-            size_t theta_k_k_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+            size_t theta_k_k_0_max__ = logical_neq(pooling_type, 2);
             for (size_t j_2__ = 0; j_2__ < theta_k_j_2_max__; ++j_2__) {
                 for (size_t j_1__ = 0; j_1__ < theta_k_j_1_max__; ++j_1__) {
                     for (size_t k_0__ = 0; k_0__ < theta_k_k_0_max__; ++k_0__) {
@@ -1077,7 +1048,7 @@ public:
             }
             size_t tau_j_2_max__ = P;
             size_t tau_j_1_max__ = P;
-            size_t tau_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+            size_t tau_k_0_max__ = logical_eq(pooling_type, 1);
             for (size_t j_2__ = 0; j_2__ < tau_j_2_max__; ++j_2__) {
                 for (size_t j_1__ = 0; j_1__ < tau_j_1_max__; ++j_1__) {
                     for (size_t k_0__ = 0; k_0__ < tau_k_0_max__; ++k_0__) {
@@ -1089,7 +1060,7 @@ public:
             }
         }
         if (!include_gqs__) return;
-        size_t logpd_k_0_max__ = (logical_gt(K_test, 0) ? 1 : 0 );
+        size_t logpd_k_0_max__ = logical_gt(K_test, 0);
         for (size_t k_0__ = 0; k_0__ < logpd_k_0_max__; ++k_0__) {
             param_name_stream__.str(std::string());
             param_name_stream__ << "logpd" << '.' << k_0__ + 1;
@@ -1101,7 +1072,7 @@ public:
                                    bool include_gqs__ = true) const {
         std::stringstream param_name_stream__;
         size_t mu_j_1_max__ = P;
-        size_t mu_k_0_max__ = (logical_neq(pooling_type, 0) ? 1 : 0 );
+        size_t mu_k_0_max__ = logical_neq(pooling_type, 0);
         for (size_t j_1__ = 0; j_1__ < mu_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < mu_k_0_max__; ++k_0__) {
                 param_name_stream__.str(std::string());
@@ -1110,7 +1081,7 @@ public:
             }
         }
         size_t L_Omega_j_1_max__ = ((P * (P - 1)) / 2);
-        size_t L_Omega_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t L_Omega_k_0_max__ = logical_eq(pooling_type, 1);
         for (size_t j_1__ = 0; j_1__ < L_Omega_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < L_Omega_k_0_max__; ++k_0__) {
                 param_name_stream__.str(std::string());
@@ -1119,7 +1090,7 @@ public:
             }
         }
         size_t hypersd_j_1_max__ = P;
-        size_t hypersd_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+        size_t hypersd_k_0_max__ = logical_eq(pooling_type, 1);
         for (size_t j_1__ = 0; j_1__ < hypersd_j_1_max__; ++j_1__) {
             for (size_t k_0__ = 0; k_0__ < hypersd_k_0_max__; ++k_0__) {
                 param_name_stream__.str(std::string());
@@ -1129,7 +1100,7 @@ public:
         }
         size_t eta_j_2_max__ = K;
         size_t eta_j_1_max__ = P;
-        size_t eta_k_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+        size_t eta_k_0_max__ = logical_neq(pooling_type, 2);
         for (size_t j_2__ = 0; j_2__ < eta_j_2_max__; ++j_2__) {
             for (size_t j_1__ = 0; j_1__ < eta_j_1_max__; ++j_1__) {
                 for (size_t k_0__ = 0; k_0__ < eta_k_0_max__; ++k_0__) {
@@ -1143,7 +1114,7 @@ public:
         if (include_tparams__) {
             size_t theta_k_j_2_max__ = K;
             size_t theta_k_j_1_max__ = P;
-            size_t theta_k_k_0_max__ = (logical_neq(pooling_type, 2) ? 1 : 0 );
+            size_t theta_k_k_0_max__ = logical_neq(pooling_type, 2);
             for (size_t j_2__ = 0; j_2__ < theta_k_j_2_max__; ++j_2__) {
                 for (size_t j_1__ = 0; j_1__ < theta_k_j_1_max__; ++j_1__) {
                     for (size_t k_0__ = 0; k_0__ < theta_k_k_0_max__; ++k_0__) {
@@ -1155,7 +1126,7 @@ public:
             }
             size_t tau_j_2_max__ = P;
             size_t tau_j_1_max__ = P;
-            size_t tau_k_0_max__ = (logical_eq(pooling_type, 1) ? 1 : 0 );
+            size_t tau_k_0_max__ = logical_eq(pooling_type, 1);
             for (size_t j_2__ = 0; j_2__ < tau_j_2_max__; ++j_2__) {
                 for (size_t j_1__ = 0; j_1__ < tau_j_1_max__; ++j_1__) {
                     for (size_t k_0__ = 0; k_0__ < tau_k_0_max__; ++k_0__) {
@@ -1167,7 +1138,7 @@ public:
             }
         }
         if (!include_gqs__) return;
-        size_t logpd_k_0_max__ = (logical_gt(K_test, 0) ? 1 : 0 );
+        size_t logpd_k_0_max__ = logical_gt(K_test, 0);
         for (size_t k_0__ = 0; k_0__ < logpd_k_0_max__; ++k_0__) {
             param_name_stream__.str(std::string());
             param_name_stream__ << "logpd" << '.' << k_0__ + 1;

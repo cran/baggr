@@ -46,7 +46,7 @@ plot(baggr_schools, order = FALSE)
 effect_plot(baggr_schools)
 
 ## -----------------------------------------------------------------------------
-effect_draw(baggr_schools, n = 1)
+effect_draw(baggr_schools, draws = 1)
 
 ## ----echo=TRUE, eval=FALSE----------------------------------------------------
 #  my_baggr_comparison <- baggr_compare(schools)
@@ -64,7 +64,7 @@ plot(my_baggr_comparison) +
 ## ---- eval=T, include=F-------------------------------------------------------
 baggr_schools_v2 <- baggr(schools, prior_hypermean = normal(10, 2.5))
 
-## ---- fig.width=5, fig.height=5-----------------------------------------------
+## ---- fig.width=6, fig.height=5-----------------------------------------------
 effect_plot("Default model" = baggr_schools, "normal(10, 2.5)" = baggr_schools_v2) +
   coord_cartesian(xlim = c(-10, 30)) + theme(legend.position = "top")
 baggr_compare("Default model" = baggr_schools, "normal(10, 2.5)" = baggr_schools_v2)
